@@ -1,0 +1,19 @@
+{
+  "name": "个人复式记账本",
+  "short_name": "记账本",
+  "description": "学生个人复式记账：收入、支出分类、股票投资（FIFO）、花呗跨期与退款，借贷自动平衡",
+  "start_url": "./个人记账本.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f9",
+  "theme_color": "#185FA5",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

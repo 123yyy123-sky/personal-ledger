@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#185FA5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="记账本">
+<meta name="application-name" content="记账本">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="学生个人复式记账：收入、支出分类、股票投资（FIFO）、花呗跨期与退款，借贷自动平衡">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<title>个人复式记账本</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --line:#e6e8eb; --line2:#f0f1f3;
+    --t1:#1f2329; --t2:#646a73; --t3:#8f959e;
+    --blue:#185FA5; --blue-bg:#e8f0fa;
+    --up:#d03050; --down:#0f9d58;
+    --amber:#8a5a00; --amber-bg:#fdf3e0;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--t1);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    font-size:14px; line-height:1.6;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior-y:contain;
+  }
+  .app{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:20px;font-weight:600;margin:0 0 2px}
+  .sub{color:var(--t2);font-size:13px;margin:0 0 18px}
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .tabs button{
+    border:1px solid var(--line);background:var(--card);color:var(--t2);
+    padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;
+  }
+  .tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px}
+  .card h2{font-size:15px;font-weight:600;margin:0 0 14px}
+  .card h3{font-size:13px;font-weight:500;color:var(--t2);margin:16px 0 8px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px}
+  input,select{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:inherit;color:var(--t1);background:#fff;outline:none;
+  }
+  input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-bg)}
+  /* 手动粘贴导入用的多行文本框 */
+  textarea.ta{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+    font-size:12.5px;font-family:ui-monospace,Consolas,"Courier New",monospace;color:var(--t1);
+    background:#fff;outline:none;resize:vertical;line-height:1.5;
+  }
+  textarea.ta:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-bg)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{
+    border:1px solid var(--line);background:#fff;color:var(--t2);
+    padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;
+  }
+  .seg button.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+  .hint{font-size:12px;color:var(--blue);margin-top:6px}
+  .hint.warn{color:var(--amber)}
+  /* 格子计算器：输入算式待回车/失焦时，边框高亮提醒 */
+  input.calc-expr{border-color:var(--amber) !important;background:#fffcf4}
+  input.calc-bad{border-color:var(--up) !important;background:#fef6f7}
+  .calc-row{display:flex;gap:8px;align-items:stretch}
+  .calc-row input{flex:1 1 auto;width:auto;min-width:0}
+  .calcbtn{
+    flex:0 0 auto;width:42px;padding:0;border:1px solid var(--line);background:#fff;
+    border-radius:8px;color:var(--blue);font-size:15px;font-family:inherit;cursor:pointer;
+  }
+  .calcbtn:hover{background:var(--blue-bg)}
+  .calcpop{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+  .calcpop[hidden]{display:none}
+  .calcpop-bg{position:absolute;inset:0;background:rgba(20,24,30,.42)}
+  .calcpop-body{
+    position:relative;width:100%;max-width:320px;background:var(--card);border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.22);padding:14px;
+  }
+  .calcpop-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .calcpop-top span{font-size:13px;color:var(--t2);font-weight:500}
+  .calcpop-x{border:none;background:transparent;font-size:15px;color:var(--t3);cursor:pointer;padding:2px 6px}
+  .calcpop-screen{
+    background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    font-size:21px;text-align:right;min-height:52px;word-break:break-all;color:var(--t1);
+  }
+  .calcpop-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .calcpop-keys button{
+    padding:0;height:46px;border:1px solid var(--line);background:#fff;border-radius:9px;
+    font-size:17px;font-family:inherit;color:var(--t1);cursor:pointer;
+  }
+  .calcpop-keys button:active{background:var(--line2)}
+  .calcpop-keys button.fn{color:var(--blue);background:var(--blue-bg);border-color:#d6e4f5}
+  .calcpop-keys button.eq{background:var(--blue);border-color:var(--blue);color:#fff}
+  .calcpop-foot{display:flex;gap:8px}
+  .calcpop-foot button{
+    flex:1;padding:11px;border-radius:9px;font-size:14px;font-family:inherit;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--t2);
+  }
+  .calcpop-foot button.primary2{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+  button.primary{
+    width:100%;padding:11px;border:none;border-radius:9px;background:var(--blue);
+    color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:4px;
+  }
+  button.primary:hover{background:#14508c}
+  button.ghost{
+    border:1px solid var(--line);background:#fff;color:var(--t2);padding:7px 14px;
+    border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;
+  }
+  button.ghost:hover{border-color:#c9ccd1}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line2)}
+  th{color:var(--t2);font-weight:500;font-size:12px;background:#fafbfc}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)}
+  .down{color:var(--down)}
+  .muted{color:var(--t3)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:150px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .kpi{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .kpi .k{font-size:12px;color:var(--t2)}
+  .kpi .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .bars{margin-top:4px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+  .bar-label{width:56px;font-size:12px;color:var(--t2);flex:none}
+  .bar-track{flex:1;height:16px;background:var(--line2);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;background:#85b7eb;border-radius:5px}
+  .bar-fill.neg{background:#8ed3a8}
+  .bar-val{width:82px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;flex:none}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;background:var(--line2);color:var(--t2)}
+  .tag.income{background:#fbe9ec;color:var(--up)}
+  .tag.expense{background:#e6f4ec;color:var(--down)}
+  .tag.invest{background:var(--blue-bg);color:var(--blue)}
+  .tag.debt{background:var(--amber-bg);color:var(--amber)}
+  .tag.refund{background:#f0ecfa;color:#6b4fbb}
+  .tag.recv{background:#e3f3ef;color:#0f6e56}
+  .empty{color:var(--t3);font-size:13px;padding:20px 0;text-align:center}
+  .note-box{background:#fafbfc;border-left:3px solid var(--blue);padding:10px 14px;border-radius:6px;
+    font-size:12.5px;color:var(--t2);margin-top:14px}
+  .disc{font-size:12px;color:var(--t3);margin-top:22px;line-height:1.7}
+  .toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%);
+    background:#1f2329;color:#fff;padding:9px 18px;border-radius:8px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:1}
+  .del{border:none;background:none;color:var(--t3);cursor:pointer;font-size:13px;font-family:inherit}
+  .del:hover{color:var(--up)}
+
+  /* ---------- 备份提醒条 ---------- */
+  #backupTip:empty{display:none}
+  .tip-banner{
+    background:var(--amber-bg);border:1px solid #f0dcb4;border-radius:10px;
+    padding:11px 13px;font-size:12.5px;color:var(--amber);margin-bottom:12px;
+    display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  }
+  .tip-banner button{
+    border:1px solid #e3c893;background:#fff;color:var(--amber);border-radius:7px;
+    padding:7px 13px;font-size:12.5px;font-family:inherit;cursor:pointer;flex:none;
+  }
+
+  /* ---------- 移动端适配 ---------- */
+  .tabs{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0 10px;margin-bottom:10px}
+  @media(max-width:600px){
+    .app{padding:calc(12px + env(safe-area-inset-top)) 12px calc(44px + env(safe-area-inset-bottom))}
+    h1{font-size:18px}
+    .sub{font-size:12.5px;margin-bottom:14px}
+    .tabs{gap:5px}
+    .tabs button{padding:9px 13px;min-height:40px;font-size:12.5px}
+    .card{padding:15px;border-radius:11px}
+    input,select{font-size:16px;padding:10px 11px}   /* iOS 上小于 16px 会自动放大整页 */
+    .seg button{padding:10px 14px;min-height:42px}
+    button.primary{padding:14px;font-size:15px;min-height:50px}
+    button.ghost{padding:10px 14px;min-height:42px}
+    .del{padding:8px 6px;font-size:13px}
+    table{font-size:12.5px}
+    th,td{padding:8px 6px}
+    .bar-label{width:42px;font-size:11.5px}
+    .bar-val{width:74px}
+    .kpi{padding:11px 12px}
+    .kpi .v{font-size:18px}
+    .row{gap:10px}
+    .row>*{min-width:130px}
+    .disc{font-size:11.5px}
+    .toast{bottom:calc(24px + env(safe-area-inset-bottom));max-width:88%;text-align:center}
+  }
+  @media(max-width:380px){
+    .tabs button{padding:8px 10px;font-size:12px}
+    .bar-label{width:38px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>个人复式记账本</h1>
+  <p class="sub">你只管记一笔，科目自动归位 · 有借必有贷，账自动平</p>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="entry" class="active">记一笔</button>
+    <button data-tab="list">流水</button>
+    <button data-tab="report">月度报表</button>
+    <button data-tab="assets">资产总览</button>
+    <button data-tab="setup">设置</button>
+  </nav>
+
+  <section id="entryPanel" class="panel">
+    <div id="backupTip"></div>
+    <div class="card">
+      <h2>记一笔</h2>
+      <div class="field">
+        <label>日期</label>
+        <input type="date" id="f_date">
+      </div>
+      <div class="field">
+        <label>类型</label>
+        <div class="seg" id="f_type">
+          <button data-v="expense" class="on">支出</button>
+          <button data-v="income">收入</button>
+          <button data-v="buy">买入证券</button>
+          <button data-v="sell">卖出证券</button>
+          <button data-v="refund">退款</button>
+          <button data-v="borrow">借入</button>
+          <button data-v="repay">还款</button>
+          <button data-v="lend">借出</button>
+          <button data-v="collect">收回</button>
+        </div>
+      </div>
+      <div class="field">
+        <label id="f_amountLabel">金额（元）</label>
+        <div class="calc-row">
+          <input type="text" id="f_amount" data-calc placeholder="0.00 或算式 12+8*3" inputmode="decimal" autocomplete="off">
+          <button type="button" class="calcbtn" data-calc-open="f_amount" title="打开计算器">＝</button>
+        </div>
+        <div class="hint" style="font-size:11.5px">格子里能直接敲算式：<b>12+8*3</b>、<b>(120-20)/4</b>、<b>1000*1.05</b> —— 回车或点别处自动变成结果</div>
+      </div>
+      <div class="field" id="f_payWrap" style="display:none">
+        <label>支付方式</label>
+        <select id="f_pay">
+          <option value="bank">银行卡 / 微信 / 支付宝余额（钱当场就出去了）</option>
+          <option value="credit">花呗 / 信用卡（先欠着，下月还）</option>
+        </select>
+      </div>
+      <div class="field" id="f_refundWrap" style="display:none">
+        <label>退款去向</label>
+        <select id="f_refundTo">
+          <option value="bank">退回银行卡 / 微信 / 支付宝余额（原来是用银行卡付的）</option>
+          <option value="credit">冲抵花呗 / 信用卡欠款（原来是用花呗付的）</option>
+        </select>
+      </div>
+      <div class="field" id="f_symbolWrap" style="display:none">
+        <label>标的代码 <span class="muted">（必填，如 510300）</span></label>
+        <input type="text" id="f_symbol" list="symbolList" placeholder="510300" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <datalist id="symbolList"></datalist>
+      </div>
+      <div class="field" id="f_symNameWrap" style="display:none">
+        <label>标的名称 <span class="muted">（选填，如 沪深300ETF）</span></label>
+        <input type="text" id="f_symName" placeholder="沪深300ETF" autocomplete="off">
+      </div>
+      <div class="field" id="f_sharesWrap" style="display:none">
+        <label id="f_sharesLabel">数量</label>
+        <div class="calc-row">
+          <input type="text" id="f_shares" data-calc placeholder="如 1000 或 1234.56" inputmode="decimal" autocomplete="off">
+          <button type="button" class="calcbtn" data-calc-open="f_shares" title="打开计算器">＝</button>
+        </div>
+      </div>
+      <div class="field" id="f_costWrap" style="display:none">
+        <label>卖出部分的买入成本（元）<span class="muted">— 已按 FIFO 自动算好，可手动覆盖</span></label>
+        <div class="calc-row">
+          <input type="text" id="f_cost" data-calc placeholder="0.00" inputmode="decimal" autocomplete="off">
+          <button type="button" class="calcbtn" data-calc-open="f_cost" title="打开计算器">＝</button>
+        </div>
+      </div>
+      <div class="field" id="f_noteWrap">
+        <label>说明</label>
+        <input type="text" id="f_note" placeholder="如：食堂午饭 15 / 买教材 68 / 地铁 4">
+      </div>
+      <div class="field" id="f_catWrap">
+        <label>科目<span class="muted">（自动识别，可手动改）</span></label>
+        <select id="f_cat"></select>
+      </div>
+      <div class="hint" id="f_rule">识别规则：说明里出现关键词即自动归类</div>
+      <button class="primary" id="f_submit">记一笔</button>
+    </div>
+    <div class="card" id="entryPreview"></div>
+  </section>
+
+  <main id="view" style="display:none"></main>
+
+  <p class="disc">
+    ⚠️ 本工具由 AI 基于用户提供的数据和公开规则自动生成，仅供参考，不构成正式会计意见或审计结论。
+    数据保存在本机浏览器，请定期在「设置」中导出备份。最终账务处理须由持证会计师或 controller 复核签核。
+  </p>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- 迷你计算器：手机端数字键盘敲不出 + * ，用这个补位 -->
+<div class="calcpop" id="calcPop" hidden>
+  <div class="calcpop-bg" data-calc-close></div>
+  <div class="calcpop-body">
+    <div class="calcpop-top"><span id="calcPopTitle">计算器</span><button type="button" class="calcpop-x" data-calc-close>✕</button></div>
+    <div class="calcpop-screen" id="calcPopScreen">0</div>
+    <div class="calcpop-keys" id="calcPopKeys">
+      <button type="button" data-k="C" class="fn">C</button>
+      <button type="button" data-k="(" class="fn">(</button>
+      <button type="button" data-k=")" class="fn">)</button>
+      <button type="button" data-k="÷" class="fn">÷</button>
+      <button type="button" data-k="7">7</button>
+      <button type="button" data-k="8">8</button>
+      <button type="button" data-k="9">9</button>
+      <button type="button" data-k="×" class="fn">×</button>
+      <button type="button" data-k="4">4</button>
+      <button type="button" data-k="5">5</button>
+      <button type="button" data-k="6">6</button>
+      <button type="button" data-k="-" class="fn">−</button>
+      <button type="button" data-k="1">1</button>
+      <button type="button" data-k="2">2</button>
+      <button type="button" data-k="3">3</button>
+      <button type="button" data-k="+" class="fn">+</button>
+      <button type="button" data-k="0">0</button>
+      <button type="button" data-k=".">.</button>
+      <button type="button" data-k="←" class="fn">←</button>
+      <button type="button" data-k="=" class="eq">=</button>
+    </div>
+    <div class="calcpop-foot">
+      <button type="button" class="ghost" data-calc-close>取消</button>
+      <button type="button" class="primary2" id="calcPopOk">填入格子</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== 自动分类词典 ===================== */
+var CATS = [
+  {name:'餐饮', keys:['食堂','饭','外卖','早餐','午餐','晚餐','夜宵','奶茶','咖啡','火锅','烧烤','烤串','面条','拉面','米线','盖饭','炒菜','快餐','肯德基','麦当劳','kfc','零食','水果','超市','小吃','饮料','可乐','汉堡','披萨','蛋糕','面包']},
+  {name:'交通', keys:['公交','地铁','打车','滴滴','出租','高铁','火车','动车','机票','飞机','大巴','车票','车费','加油','汽油','停车','单车','哈啰','过路','高速','摩的']},
+  {name:'学习', keys:['书','教材','图书','报名','考试','考证','培训','网课','课程','打印','复印','文具','笔记本','学费','四六级','考研','雅思','托福','论文','文献','知网','笔','实验','资料']},
+  {name:'住宿', keys:['房租','宿舍','水电','水费','电费','物业','租房','燃气','网费','暖气','住宿']},
+  {name:'通讯', keys:['话费','流量','手机费','宽带','电信','移动','联通','套餐','充值']},
+  {name:'娱乐', keys:['电影','游戏','唱歌','ktv','演出','演唱会','门票','旅游','网吧','会员','视频','音乐','剧本杀','密室','桌游','手办','盲盒']},
+  {name:'日用', keys:['日用','洗发','沐浴','牙膏','纸巾','洗衣液','化妆','护肤','洗面奶','面膜','生活用品']},
+  {name:'医疗', keys:['药','医院','看病','门诊','体检','挂号','医保','牙','眼镜','疫苗']},
+  {name:'服饰', keys:['衣服','鞋','裤子','外套','服装','优衣库','帽','袜','背包','双肩包','内衣']},
+  {name:'社交', keys:['请客','聚餐','随礼','红包','礼物','送礼','聚会','份子','团建']}
+];
+var EXPENSE_CATS = CATS.map(function(c){return c.name;}).concat(['其他']);
+
+var INCOME_CATS = ['生活费','兼职工资','奖学金','投资收益','其他收入'];
+
+var TYPE_LABEL = {expense:'支出',income:'收入',buy:'买入证券',sell:'卖出证券',refund:'退款',borrow:'借入',repay:'还款',lend:'借出',collect:'收回'};
+var TYPE_TAG   = {expense:'expense',income:'income',buy:'invest',sell:'invest',refund:'refund',borrow:'debt',repay:'debt',lend:'recv',collect:'recv'};
+var TYPE_CAT   = {expense:'费用',income:'收入',buy:'资产',sell:'资产',refund:'费用冲减',borrow:'负债',repay:'负债',lend:'债权',collect:'债权'};
+
+/* ===================== 存储 ===================== */
+var STORE = 'pl_ledger_v1';
+var db = null;
+
+function load(){
+  try{ var s = localStorage.getItem(STORE); db = s ? JSON.parse(s) : null; }catch(e){ db = null; }
+  if(!db) db = { version:5, opening:null, txs:[], marketPrices:{}, brokerPrices:{}, securityNames:{} };
+  db = migrateDatabase(db);
+}
+
+/* 老格式兼容迁移：单一持仓 / 单一总市值 / 单一券商成本价 → 逐只结构。
+ * 读本地存档和「导入旧备份文件」都走这里，保证从更早版本导出来的账本也能正确还原。 */
+function migrateDatabase(d){
+  if(!d) d = { version:5, opening:null, txs:[], marketPrices:{}, brokerPrices:{}, securityNames:{} };
+  if(!d.txs) d.txs = [];
+  if(!d.securityNames) d.securityNames = {};
+  if(!d.brokerPrices) d.brokerPrices = {};
+  if(!d.marketPrices) d.marketPrices = {};
+  if(d.lastBackup === undefined) d.lastBackup = null;
+
+  if(d.opening){
+    if(!d.opening.positions){
+      d.opening.positions = [];
+      var mss = Number(d.opening.stockShares)||0;
+      var msc = Number(d.opening.stockCost)||0;
+      if(mss > 0){
+        d.opening.positions.push({ symbol:'', shares:mss, cost:msc });
+        if(d.stockMarket != null) d.marketPrices['未分类'] = Number(d.stockMarket) / mss;
+      }
+    }
+    delete d.opening.stockCost;
+    delete d.opening.stockShares;
+    if(d.opening.receivable === undefined) d.opening.receivable = 0;
+  }
+  if(d.brokerCostPrice != null) d.brokerPrices['未分类'] = Number(d.brokerCostPrice);
+  delete d.brokerCostPrice;
+  delete d.stockMarket;
+  d.version = 5;
+  return d;
+}
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(db)); }catch(e){} }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ===================== 工具 ===================== */
+function fmt(n){
+  n = Number(n)||0;
+  return '¥' + n.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(m){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+  });
+}
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function classify(note){
+  var s = String(note||'').toLowerCase();
+  if(!s) return '其他';
+  for(var i=0;i<CATS.length;i++){
+    var c = CATS[i];
+    for(var j=0;j<c.keys.length;j++){
+      if(s.indexOf(c.keys[j]) > -1) return c.name;
+    }
+  }
+  return '其他';
+}
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 1600);
+}
+
+/* 距某日期过去多少天（按本地日期算） */
+function daysSince(dateStr){
+  var a = new Date(String(dateStr) + 'T00:00:00');
+  if(isNaN(a.getTime())) return 0;
+  var b = new Date(todayStr() + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+/* ===================== 格子计算器：数字框里可直接敲算式 =====================
+   12+8*3      → 36          (120-20)/4   → 25
+   1000*1.05   → 1050        36.5-4.5     → 32
+   支持中文全角 ＋－×÷（）、千分位逗号、百分号；回车或点到别处即回填结果。
+   不使用 eval —— 自带四则运算解析器，只认数字和运算符，杜绝注入。 */
+function normExpr(s){
+  return String(s == null ? '' : s)
+    .replace(/[\uFF10-\uFF19]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 65248); })
+    .replace(/\uFF0B/g, '+')
+    .replace(/[\uFF0D\u2212\u2013\u2014\u2015]/g, '-')
+    .replace(/[\u00D7\u2715\u2716\uFF58xX]/g, '*')
+    .replace(/[\u00F7\uFF0F]/g, '/')
+    .replace(/\uFF08/g, '(').replace(/\uFF09/g, ')')
+    .replace(/\uFF05/g, '%')
+    .replace(/\uFF0E/g, '.')
+    /* 逗号只在「千分位」位置上才剥离：1,234.56 → 1234.56；而 1,5 这种原样留着好报错，
+       不能悄悄当成 15（那是最典型的静默错误） */
+    .replace(/(\d)[,\uFF0C](?=\d{3}(?!\d))/g, '$1')
+    .replace(/[\s\u3000]+/g, '');
+}
+
+/* 是否含运算符（不含则按纯数字处理） */
+function isExpr(s){ return /[-+*/%()\u00D7\u00F7\uFF0B\uFF0D\uFF08\uFF09]/.test(String(s == null ? '' : s)); }
+
+/* 四则运算解析器：expr → term → unary → postfix(%) → primary */
+function evalExpr(src){
+  var s = src, i = 0;
+  function peek(){ return s.charAt(i); }
+  function primary(){
+    if(peek() === '('){
+      i++;
+      var v = expr();
+      if(peek() !== ')') throw new Error('括号不配对');
+      i++;
+      return v;
+    }
+    var m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+    if(!m) throw new Error('位置 ' + (i + 1) + ' 处识别不了');
+    i += m[0].length;
+    return parseFloat(m[0]);
+  }
+  function postfix(){
+    var v = primary();
+    while(peek() === '%'){ i++; v = v / 100; }
+    return v;
+  }
+  function unary(){
+    if(peek() === '-'){ i++; return -unary(); }
+    if(peek() === '+'){ i++; return unary(); }
+    return postfix();
+  }
+  function term(){
+    var v = unary();
+    while(peek() === '*' || peek() === '/'){
+      var op = s.charAt(i++), r = unary();
+      if(op === '/'){ if(r === 0) throw new Error('除数不能为 0'); v = v / r; }
+      else v = v * r;
+    }
+    return v;
+  }
+  function expr(){
+    var v = term();
+    while(peek() === '+' || peek() === '-'){
+      var op = s.charAt(i++), r = term();
+      v = op === '+' ? v + r : v - r;
+    }
+    return v;
+  }
+  var out = expr();
+  if(i < s.length) throw new Error('多出了「' + s.slice(i) + '」');
+  if(!isFinite(out)) throw new Error('结果不是有效数字');
+  return out;
+}
+
+/* 修掉浮点尾巴：0.1+0.2 → 0.3 而不是 0.30000000000000004 */
+function round6(v){ return Math.round(v * 1e6) / 1e6; }
+
+/* 有没有哪个「数字片段」里塞了不止一个小数点（1.5.5 这种） */
+function dotOverflow(e){
+  var parts = String(e).split(/[+\-*/%()\u00D7\u00F7]/);
+  for(var i = 0; i < parts.length; i++){
+    if((parts[i].match(/\./g) || []).length > 1) return true;
+  }
+  return false;
+}
+var DOT_MSG = '小数点多于一个 —— 一个数字只能有一个小数点；要算两个小数相加，请写成 1.5+2.5';
+
+/* 解析一个格子的内容 → {ok, val, expr, msg} */
+function calcField(raw){
+  var s = String(raw == null ? '' : raw).trim();
+  if(s === '') return { ok:true, val:null, expr:false };
+  var e = normExpr(s);
+  if(!isExpr(e)){
+    /* 纯数字：允许 1. / .5 这种悬空写法（parseFloat 一样读得出），只要求至少有一位数字 */
+    if(!/^\d*\.?\d*$/.test(e) || !/\d/.test(e)){
+      return { ok:false, msg: dotOverflow(e) ? DOT_MSG : '「' + s + '」不是有效数字' };
+    }
+    return { ok:true, val:parseFloat(e), expr:false };
+  }
+  try { return { ok:true, val:round6(evalExpr(e)), expr:true, src:e }; }
+  catch(err){ return { ok:false, msg: dotOverflow(e) ? DOT_MSG : err.message }; }
+}
+
+/* 读一个格子里的数值（支持算式），读不出就返回 dflt */
+function readNum(el, dflt){
+  if(typeof el === 'string') el = document.getElementById(el);
+  var d = (dflt === undefined) ? 0 : dflt;
+  if(!el) return d;
+  var r = calcField(el.value);
+  return (r.ok && r.val != null) ? r.val : d;
+}
+
+/* 把格子里的算式算出来并回填；silent = 不弹提示 */
+function applyCalc(el, silent){
+  if(!el || !el.getAttribute || !el.hasAttribute('data-calc')) return false;
+  var raw = String(el.value == null ? '' : el.value);
+  el.classList.remove('calc-expr');
+  el.classList.remove('calc-bad');
+  if(raw.trim() === '') return true;
+  var r = calcField(raw);
+  if(!r.ok){
+    if(!silent) toast('算式没算对：' + r.msg);
+    return false;
+  }
+  var nv = String(round6(r.val));
+  if(nv !== raw){
+    el.value = nv;
+    if(r.expr && !silent) toast(normExpr(raw) + ' = ' + nv);
+  }
+  return true;
+}
+
+/* 把当前视图里所有待结算的算式格子先算掉 */
+function flushCalcs(scope){
+  var root = scope || document;
+  [].slice.call(root.querySelectorAll('input[data-calc]')).forEach(function(el){ applyCalc(el, true); });
+}
+
+/* 全局委托：回车 / 失焦即结算，输入算式时边框高亮 */
+document.addEventListener('keydown', function(e){
+  var el = e.target;
+  if(e.key === 'Enter' && el && el.hasAttribute && el.hasAttribute('data-calc')) applyCalc(el);
+}, true);
+document.addEventListener('focusout', function(e){
+  var el = e.target;
+  if(el && el.hasAttribute && el.hasAttribute('data-calc')) applyCalc(el);
+}, true);
+document.addEventListener('input', function(e){
+  var el = e.target;
+  if(el && el.hasAttribute && el.hasAttribute('data-calc')){
+    var e2 = normExpr(el.value);
+    if(dotOverflow(e2)){                 // 一个小数里敲了两个点 → 立刻红框，别等失焦才骂人
+      el.classList.add('calc-bad'); el.classList.remove('calc-expr');
+    } else if(isExpr(e2)){
+      el.classList.add('calc-expr'); el.classList.remove('calc-bad');
+    } else {
+      el.classList.remove('calc-expr'); el.classList.remove('calc-bad');
+    }
+  }
+}, true);
+
+/* ---------- 迷你计算器浮层 ----------
+   手机端 inputmode="decimal" 的数字键盘没有 + − × ÷，用这个补位；
+   表达式仍走同一个 evalExpr，结果口径完全一致。 */
+var calcTargetId = null, calcBuf = '';
+function calcScreen(msg){
+  var s = document.getElementById('calcPopScreen');
+  if(s) s.textContent = msg;
+}
+function openCalcFor(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  calcTargetId = id;
+  var raw = String(el.value == null ? '' : el.value).trim();
+  calcBuf = raw ? normExpr(raw) : '';
+  calcScreen(calcBuf || '0');
+  var pop = document.getElementById('calcPop');
+  if(pop) pop.hidden = false;
+}
+function closeCalc(){
+  var pop = document.getElementById('calcPop');
+  if(pop) pop.hidden = true;
+  calcTargetId = null;
+}
+function pressCalcKey(k){
+  if(k === 'C'){ calcBuf = ''; return calcScreen('0'); }
+  if(k === '←'){ calcBuf = calcBuf.slice(0, -1); return calcScreen(calcBuf || '0'); }
+  if(k === '='){
+    var r = calcField(calcBuf);
+    if(!r.ok) return calcScreen('算不了：' + r.msg);
+    if(r.val == null) return calcScreen('0');
+    calcBuf = String(round6(r.val));
+    return calcScreen(calcBuf);
+  }
+  if(k === '\u2212') k = '-';
+  if(k === '.'){
+    var tail = calcBuf.split(/[+\-*/%()\u00D7\u00F7]/).pop();   // 当前正在输入的那一个数
+    if(tail.indexOf('.') >= 0) return;                          // 这个数已有小数点 → 静默忽略（标准计算器行为）
+    if(tail === '') k = '0.';                                   // 前一位是运算符或空 → 补成 0.
+  }
+  calcBuf += k;
+  calcScreen(calcBuf);
+}
+function applyCalcPop(){
+  var el = document.getElementById(calcTargetId);
+  if(!el){ closeCalc(); return; }
+  var r = calcField(calcBuf);
+  if(!r.ok){ toast('算式没算对：' + r.msg); return; }
+  el.value = (r.val == null) ? '' : String(round6(r.val));
+  el.classList.remove('calc-expr');
+  closeCalc();
+  el.dispatchEvent(new Event('input', { bubbles:true }));    // 触发卖出成本 / 账实核对等联动
+  el.dispatchEvent(new Event('change', { bubbles:true }));
+}
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if(!t || !t.closest) return;
+  var op = t.closest('[data-calc-open]');
+  if(op){ openCalcFor(op.getAttribute('data-calc-open')); return; }
+  if(t.closest('[data-calc-close]')){ closeCalc(); return; }
+  var key = t.closest('#calcPopKeys button');
+  if(key){ pressCalcKey(key.getAttribute('data-k')); return; }
+  if(t.id === 'calcPopOk'){ applyCalcPop(); }
+});
+document.addEventListener('keydown', function(e){
+  var pop = document.getElementById('calcPop');
+  if(e.key === 'Escape' && pop && !pop.hidden) closeCalc();
+});
+
+/* ===================== 计算 ===================== */
+function opening(){ return db.opening || {bank:0, receivable:0, positions:[], debt:0}; }
+
+/* ---------- 标的（证券）辅助：每只股票 = 一个独立核算单元 ---------- */
+function symKey(obj){
+  var s = String((obj && obj.symbol) || '').trim();
+  return s || '未分类';
+}
+function secName(sym){
+  if(!sym || sym === '未分类') return '';
+  return (db.securityNames && db.securityNames[sym]) || '';
+}
+function symLabel(sym){
+  if(!sym || sym === '未分类') return '未分类';
+  var n = secName(sym);
+  return n ? (sym + ' ' + n) : sym;
+}
+function registerName(sym, name){
+  if(!db.securityNames) db.securityNames = {};
+  var n = String(name||'').trim();
+  if(sym && sym !== '未分类' && n) db.securityNames[sym] = n;
+}
+function knownSymbols(){
+  var set = {};
+  (opening().positions||[]).forEach(function(p){ var s = String(p.symbol||'').trim(); if(s) set[s] = 1; });
+  db.txs.forEach(function(t){ if((t.type==='buy' || t.type==='sell') && t.symbol) set[String(t.symbol).trim()] = 1; });
+  return Object.keys(set).sort();
+}
+function priceOf(sym){
+  var p = db.marketPrices ? db.marketPrices[sym] : null;
+  if(p == null || p === '' || isNaN(Number(p))) return null;
+  return Number(p);
+}
+function brokerPerOf(sym){
+  var p = db.brokerPrices ? db.brokerPrices[sym] : null;
+  if(p == null || p === '' || isNaN(Number(p))) return null;
+  return Number(p);
+}
+
+/* 单笔交易对账面与报表的影响 —— calc 与 monthReport 共用同一套规则，避免两处口径打架 */
+function txEffect(t, ctx){
+  var a = Number(t.amount)||0;
+  if(ctx.receivable === undefined) ctx.receivable = 0;
+  if(ctx.debt === undefined) ctx.debt = 0;
+  var e = { bank:0, debt:0, receivable:0, stockCost:0, realized:0, income:0, expense:0, cashIn:0, cashOut:0 };
+  if(t.type === 'income'){
+    e.bank = a; e.income = a; e.cashIn = a;
+  }else if(t.type === 'expense'){
+    e.expense = a;
+    if(t.pay === 'credit'){ e.debt = a; }          // 花呗消费：挂负债，钱没当场出去
+    else { e.bank = -a; e.cashOut = a; }
+  }else if(t.type === 'buy'){
+    e.bank = -a; e.stockCost = a; e.cashOut = a;
+  }else if(t.type === 'sell'){
+    var c = Number(t.cost)||0;
+    e.bank = a; e.stockCost = -c; e.realized = a - c; e.cashIn = a;
+  }else if(t.type === 'borrow'){
+    e.bank = a; e.debt = a; e.cashIn = a;
+  }else if(t.type === 'repay'){
+    e.bank = -a; e.debt = -a; e.cashOut = a;
+  }else if(t.type === 'refund'){
+    e.expense = -a;                                 // 退款冲减费用，而不是算作收入
+    if((t.refundTo || 'bank') === 'credit'){
+      var use = Math.min(Math.max(ctx.debt, 0), a); // 先冲抵花呗欠款
+      e.debt = -use;
+      e.bank = a - use;                             // 欠款已还清的部分，退回银行卡
+      e.cashIn = a - use;
+    }else{
+      e.bank = a; e.cashIn = a;
+    }
+  }else if(t.type === 'lend'){
+    /* 借出（国债逆回购、借给他人）：资产内部转换——银行存款 → 其他应收款，不是支出 */
+    e.bank = -a; e.receivable = a; e.cashOut = a;
+  }else if(t.type === 'collect'){
+    /* 收回：先冲减应收款本金，超出部分 = 利息，记已实现投资收益 */
+    var useR = Math.min(Math.max(ctx.receivable, 0), a);
+    e.receivable = -useR;
+    e.realized = a - useR;
+    e.bank = a; e.cashIn = a;
+  }
+  ctx.debt += e.debt;
+  ctx.receivable += e.receivable;
+  return e;
+}
+
+function calc(){
+  var o = opening();
+  var ctx = { debt: Number(o.debt)||0, receivable: Number(o.receivable)||0 };
+  var bank = Number(o.bank)||0;
+  var realized = 0, incomeTotal = 0, expenseTotal = 0;
+
+  db.txs.forEach(function(t){
+    var e = txEffect(t, ctx);
+    bank += e.bank;
+    realized += e.realized; incomeTotal += e.income; expenseTotal += e.expense;
+  });
+  var debt = ctx.debt;
+  var receivable = ctx.receivable;
+
+  var st = stockAnalytics();          // 持仓成本一律以「分标的 FIFO 批次引擎」为唯一口径
+  var stockCost = st.fifoCost;
+  var market = st.market;
+  var floatPL = market - stockCost;
+  var assets = bank + receivable + market;
+  var net = assets - debt;
+
+  return {
+    bank:bank, receivable:receivable, stockCost:stockCost, stockMarket:market, floatPL:floatPL,
+    debt:debt, assets:assets, net:net,
+    realized:realized, incomeTotal:incomeTotal, expenseTotal:expenseTotal,
+    analytics:st
+  };
+}
+
+/* ---------- 股票批次引擎：FIFO / 加权平均 / 摊薄 三口径 ---------- */
+function sortedTxs(){
+  return db.txs.slice().sort(function(a,b){
+    if(a.date === b.date) return 0;
+    return a.date < b.date ? -1 : 1;
+  });
+}
+function consume(lots, need){
+  var cost = 0;
+  while(need > 1e-9 && lots.length){
+    var lot = lots[0];
+    var unit = lot.shares > 0 ? lot.cost / lot.shares : 0;
+    var take = Math.min(lot.shares, need);
+    cost += unit * take;
+    lot.cost -= unit * take;
+    lot.shares -= take;
+    need -= take;
+    if(lot.shares <= 1e-9) lots.shift();
+  }
+  return cost;
+}
+/* 按标的（证券）分组建批次：每只股票一条独立队列，互不串号 */
+function buildLotsBySymbol(){
+  var map = {};
+  function bucket(sym){
+    if(!map[sym]) map[sym] = { symbol:sym, lots:[], gap:0 };
+    return map[sym];
+  }
+  (opening().positions||[]).forEach(function(p){
+    var sym = symKey(p);
+    var sh = Number(p.shares)||0;
+    if(sh > 0) bucket(sym).lots.push({ shares:sh, cost:Number(p.cost)||0 });
+  });
+  sortedTxs().forEach(function(t){
+    if(t.type !== 'buy' && t.type !== 'sell') return;
+    var b = bucket(symKey(t));
+    var sh = Number(t.shares)||0;
+    if(t.type === 'buy'){
+      if(sh > 0) b.lots.push({ shares:sh, cost:Number(t.amount)||0 });
+      else b.gap++;
+    }else{
+      if(sh > 0) consume(b.lots, sh);
+      else { b.gap++; consume(b.lots, b.lots.reduce(function(a,l){return a+l.shares;},0)); }
+    }
+  });
+  return map;
+}
+function fifoCostForSell(symbol, shares){
+  var map = buildLotsBySymbol();
+  var b = map[symbol || '未分类'];
+  if(!b) return 0;
+  var copy = b.lots.map(function(l){ return { shares:l.shares, cost:l.cost }; });
+  return consume(copy, Number(shares)||0);
+}
+/* 逐只核算 + 组合汇总 */
+function stockAnalytics(){
+  var o = opening();
+  var lotMap = buildLotsBySymbol();
+  var rows = {}, order = [];
+
+  function row(sym){
+    if(!rows[sym]){
+      rows[sym] = { symbol:sym, name:secName(sym), shares:0, fifoCost:0,
+                    buyTotal:0, sellNet:0, sellCost:0, realized:0,
+                    avgCost:0, avgShares:0, gap:0 };
+      order.push(sym);
+    }
+    return rows[sym];
+  }
+
+  (o.positions||[]).forEach(function(p){
+    var r = row(symKey(p));
+    var sh = Number(p.shares)||0, c = Number(p.cost)||0;
+    r.buyTotal += c;
+    r.avgCost += c; r.avgShares += sh;
+  });
+
+  sortedTxs().forEach(function(t){
+    if(t.type !== 'buy' && t.type !== 'sell') return;
+    var r = row(symKey(t));
+    var amt = Number(t.amount)||0, sh = Number(t.shares)||0;
+    if(t.type === 'buy'){
+      r.buyTotal += amt;
+      r.avgCost += amt; r.avgShares += sh;
+    }else{
+      r.sellNet += amt;
+      r.sellCost += (Number(t.cost)||0);
+      r.realized += amt - (Number(t.cost)||0);
+      var take = (sh > 0) ? Math.min(sh, r.avgShares) : r.avgShares;
+      var u = r.avgShares > 0 ? r.avgCost / r.avgShares : 0;
+      r.avgCost -= u * take; r.avgShares -= take;
+      if(r.avgCost < 0.005) r.avgCost = 0;
+    }
+  });
+
+  Object.keys(lotMap).forEach(function(sym){
+    var r = row(sym);
+    lotMap[sym].lots.forEach(function(l){ r.shares += l.shares; r.fifoCost += l.cost; });
+    r.gap = lotMap[sym].gap;
+  });
+
+  var list = order.map(function(sym){
+    var r = rows[sym];
+    r.shares = Math.round(r.shares * 10000) / 10000;
+    r.avgShares = Math.round(r.avgShares * 10000) / 10000;
+    var price = priceOf(sym);
+    r.price = price;
+    r.priced = (price != null);
+    r.market = r.priced ? (r.shares * price) : r.fifoCost;   // 没填现价就按成本估值，浮盈记 0
+    r.floatPL = r.market - r.fifoCost;
+    r.fifoPer = r.shares > 0 ? r.fifoCost / r.shares : 0;
+    r.avgPer = r.avgShares > 0 ? r.avgCost / r.avgShares : 0;
+    r.dilutedPer = r.shares > 0 ? (r.buyTotal - r.sellNet) / r.shares : 0;
+    r.dilutedCost = r.dilutedPer * r.shares;
+    r.brokerPer = brokerPerOf(sym);
+    r.cleared = (r.shares <= 1e-9);
+    return r;
+  });
+
+  var agg = { shares:0, fifoCost:0, market:0, floatPL:0, realized:0,
+              avgCost:0, dilutedCost:0, gap:0 };
+  var held = [], cleared = [];
+  list.forEach(function(r){
+    agg.shares += r.shares; agg.fifoCost += r.fifoCost; agg.market += r.market;
+    agg.floatPL += r.floatPL; agg.realized += r.realized;
+    agg.avgCost += r.avgCost; agg.dilutedCost += r.dilutedCost; agg.gap += r.gap;
+    (r.cleared ? cleared : held).push(r);
+  });
+  var byMkt = function(a,b){ return b.market - a.market; };
+  held.sort(byMkt); cleared.sort(byMkt);
+  list.sort(byMkt);
+
+  return {
+    list:list, held:held, cleared:cleared,
+    unpriced: held.filter(function(r){ return !r.priced; }).map(function(r){ return r.symbol; }),
+    shares:agg.shares, fifoCost:agg.fifoCost,
+    fifoPer:agg.shares > 0 ? agg.fifoCost/agg.shares : 0,
+    avgCost:agg.avgCost, avgPer:agg.shares > 0 ? agg.avgCost/agg.shares : 0,
+    dilutedCost:agg.dilutedCost, dilutedPer:agg.shares > 0 ? agg.dilutedCost/agg.shares : 0,
+    market:agg.market, floatPL:agg.floatPL, realized:agg.realized, gap:agg.gap
+  };
+}
+
+function monthOf(dateStr){ return String(dateStr||'').slice(0,7); }
+
+function monthReport(ym){
+  var ctx = { debt: Number(opening().debt)||0, receivable: Number(opening().receivable)||0 };
+  var rows = [], inc = {}, exp = {}, realized = 0, incT = 0, expT = 0;
+  var cashIn = 0, cashOut = 0, refundT = 0;
+  db.txs.forEach(function(t){
+    var e = txEffect(t, ctx);                       // 全量走一遍，保证负债轨迹正确
+    if(monthOf(t.date) !== ym) return;
+    rows.push(t);
+    incT += e.income; expT += e.expense; realized += e.realized;
+    cashIn += e.cashIn; cashOut += e.cashOut;
+    if(t.type === 'refund') refundT += Number(t.amount)||0;
+    if(e.income){ var ki = t.category || '其他收入'; inc[ki] = (inc[ki]||0) + e.income; }
+    if(e.expense){ var ke = t.category || '其他'; exp[ke] = (exp[ke]||0) + e.expense; }
+  });
+  return {rows:rows, inc:inc, exp:exp, realized:realized, incT:incT, expT:expT,
+          cashIn:cashIn, cashOut:cashOut, refundT:refundT, surplus:incT - expT + realized};
+}
+
+function allMonths(){
+  var set = {};
+  db.txs.forEach(function(t){ var m = monthOf(t.date); if(m) set[m] = 1; });
+  var cur = todayStr().slice(0,7);
+  set[cur] = 1;
+  return Object.keys(set).sort().reverse();
+}
+
+/* ===================== 入口表单 ===================== */
+var fType = 'expense';
+
+function refreshSymbolList(){
+  var dl = document.getElementById('symbolList');
+  if(!dl) return;
+  dl.innerHTML = knownSymbols().map(function(s){
+    var n = secName(s);
+    return '<option value="'+esc(s)+'"'+(n?' label="'+esc(n)+'"':'')+'></option>';
+  }).join('');
+}
+
+function refreshCatOptions(){
+  var sel = document.getElementById('f_cat');
+  var noteWrap = document.getElementById('f_noteWrap');
+  var catWrap = document.getElementById('f_catWrap');
+  var costWrap = document.getElementById('f_costWrap');
+  var sharesWrap = document.getElementById('f_sharesWrap');
+  var sharesLabel = document.getElementById('f_sharesLabel');
+  var payWrap = document.getElementById('f_payWrap');
+  var refundWrap = document.getElementById('f_refundWrap');
+  var symbolWrap = document.getElementById('f_symbolWrap');
+  var symNameWrap = document.getElementById('f_symNameWrap');
+  var opts = [];
+
+  if(fType === 'expense' || fType === 'refund') opts = EXPENSE_CATS;
+  else if(fType === 'income') opts = INCOME_CATS;
+
+  var catOn    = (fType === 'expense' || fType === 'income' || fType === 'refund') ? '' : 'none';
+  var payOn    = (fType === 'expense') ? '' : 'none';
+  var refundOn = (fType === 'refund') ? '' : 'none';
+  var isStock  = (fType === 'buy' || fType === 'sell');
+  var sharesOn = isStock ? '' : 'none';
+  var costOn   = (fType === 'sell') ? '' : 'none';
+
+  noteWrap.style.display=''; catWrap.style.display=catOn;
+  costWrap.style.display=costOn; sharesWrap.style.display=sharesOn;
+  payWrap.style.display=payOn; refundWrap.style.display=refundOn;
+  symbolWrap.style.display = isStock ? '' : 'none';
+  symNameWrap.style.display = isStock ? '' : 'none';
+
+  if(fType === 'buy') sharesLabel.textContent = '买入数量（股 / 份）';
+  if(fType === 'sell') sharesLabel.textContent = '卖出数量（股 / 份）';
+
+  if(isStock) refreshSymbolList();
+
+  sel.innerHTML = opts.map(function(o){ return '<option>'+esc(o)+'</option>'; }).join('');
+
+  var labels = {expense:'金额（元）',income:'金额（元）',
+    buy:'买入金额（元）· 填实际付出（含手续费）',
+    sell:'卖出到手金额（元）· 填实际到账（扣完费用）',
+    refund:'退款金额（元）· 填实际退回的钱',
+    borrow:'借入金额（元）',
+    repay:'还款金额（元）',
+    lend:'借出本金（元）· 填实际转出的钱',
+    collect:'收回金额（元）· 填实际到账（含利息）'};
+  document.getElementById('f_amountLabel').textContent = labels[fType] || '金额（元）';
+
+  autoDetect();
+  updateSellCost();
+}
+
+function updateSellCost(){
+  if(fType !== 'sell') return;
+  var sh = readNum('f_shares', NaN);
+  var sym = String((document.getElementById('f_symbol').value)||'').trim();
+  var f = document.getElementById('f_cost');
+  if(!(sh > 0) || !sym){ return; }
+  var c = fifoCostForSell(sym, sh);      // 只在本只股票的队列里结转
+  f.value = (Math.round(c * 100) / 100).toFixed(2);
+}
+
+function autoDetect(){
+  var rule = document.getElementById('f_rule');
+  if(fType === 'expense' || fType === 'refund'){
+    var note = document.getElementById('f_note').value;
+    var cat = classify(note);
+    var sel = document.getElementById('f_cat');
+    if([].slice.call(sel.options).some(function(o){return o.value===cat;})) sel.value = cat;
+    if(!note){
+      rule.textContent = (fType === 'refund')
+        ? '识别规则：说明里写清退的是什么东西（如“退了教材”），自动冲减对应科目'
+        : '识别规则：说明里出现关键词即自动归类';
+      rule.className='hint';
+    }
+    else if(cat === '其他'){
+      rule.textContent = '未识别到关键词，已归入「其他」——可在上方手动改';
+      rule.className='hint warn';
+    }
+    else {
+      rule.textContent = (fType === 'refund')
+        ? '✓ 退的是「'+cat+'」，将冲减本月该科目支出（不计入收入）'
+        : '✓ 已识别为「'+cat+'」';
+      rule.className='hint';
+    }
+  }else if(fType === 'income'){
+    rule.textContent = '收入类：请选择来源，金额计入本月收入';
+    rule.className='hint';
+  }else if(fType === 'buy'){
+    var bsym = String((document.getElementById('f_symbol').value)||'').trim();
+    if(!bsym){
+      rule.textContent = '先填标的代码（必填）。金额填含手续费的实际付出（场外基金就是支付宝实际扣款）；数量填股数或份额，场外基金可带小数。';
+      rule.className = 'hint warn';
+    }else{
+      rule.textContent = '买入 '+symLabel(bsym)+' → 只进这只标的自己的队列，不影响其他持仓';
+      rule.className = 'hint';
+    }
+  }else if(fType === 'sell'){
+    var ssym = String((document.getElementById('f_symbol').value)||'').trim();
+    var wsh = readNum('f_shares', 0);
+    var curSh = 0;
+    if(ssym && knownSymbols().indexOf(ssym) >= 0){
+      var rec = stockAnalytics().list.filter(function(r){ return r.symbol === ssym; })[0];
+      curSh = rec ? rec.shares : 0;
+    }
+    if(!ssym){
+      rule.textContent = '先填标的代码，才能在这只标的自己的队列里按 FIFO 结转成本。';
+      rule.className = 'hint warn';
+    }else if(knownSymbols().indexOf(ssym) < 0){
+      rule.textContent = '「'+ssym+'」还没有买入或期初持仓记录，结转成本会是 0 —— 请确认代码没写错。';
+      rule.className = 'hint warn';
+    }else if(wsh > 0 && wsh > curSh + 1e-9){
+      rule.textContent = '⚠️ 卖出 '+wsh+'，超过「'+symLabel(ssym)+'」当前持仓 '+curSh+'，结转成本会不足，请核对。';
+      rule.className = 'hint warn';
+    }else{
+      rule.textContent = '卖出 '+symLabel(ssym)+' → 只在本只标的的队列里 FIFO 结转（先卖它最早那批），不动别的持仓';
+      rule.className = 'hint';
+    }
+  }else if(fType === 'lend'){
+    rule.textContent = '借出（国债逆回购 / 借给他人）= 资产内部转换：银行存款 → 其他应收款，不计支出。当前未收回 '+fmt(calc().receivable)+'。';
+    rule.className = 'hint';
+  }else if(fType === 'collect'){
+    rule.textContent = '填实际到账金额：程序先冲减应收款本金，超出部分记为投资收益（利息）。当前未收回 '+fmt(calc().receivable)+'。';
+    rule.className = 'hint';
+  }else{
+    rule.textContent = '借入 / 还款只影响负债和银行存款，不进收支表';
+    rule.className='hint';
+  }
+}
+
+function submitEntry(){
+  flushCalcs();                       // 先把还没结算的算式格子算掉（12+8*3 → 36）
+  var date = document.getElementById('f_date').value || todayStr();
+  var amount = readNum('f_amount', NaN);
+  if(!(amount > 0)){ toast('请填写大于 0 的金额'); return; }
+
+  var note = document.getElementById('f_note').value.trim();
+  var cat = document.getElementById('f_cat').value;
+  var shares = readNum('f_shares', NaN);
+  var tx = { id:uid(), date:date, type:fType, amount:amount, note:note, category:'' };
+
+  if(fType === 'expense'){
+    tx.category = cat;
+    tx.pay = document.getElementById('f_pay').value;
+  }
+  if(fType === 'income'){ tx.category = cat; }
+
+  if(fType === 'refund'){
+    tx.category = cat;                                        // 被冲减的支出科目
+    tx.refundTo = document.getElementById('f_refundTo').value;
+  }
+
+  if(fType === 'buy' || fType === 'sell'){
+    var sym = String(document.getElementById('f_symbol').value||'').trim();
+    if(!sym){ toast('请填写标的代码（如 510300）'); return; }
+    if(!(shares > 0)){ toast('请填写数量（股数或份额，用于 FIFO 建批次 / 结转成本）'); return; }
+    tx.symbol = sym;                                  // 标的 = 独立核算单元
+    tx.category = '股票投资';
+    tx.shares = shares;
+    registerName(sym, document.getElementById('f_symName').value);
+    if(fType === 'sell'){
+      var cost = readNum('f_cost', NaN);
+      if(isNaN(cost)) cost = fifoCostForSell(sym, shares);   // 只在本标的队列内结转
+      tx.cost = cost;
+    }
+  }
+
+  if(fType === 'borrow' || fType === 'repay'){ tx.category = '负债'; }
+  if(fType === 'lend' || fType === 'collect'){ tx.category = '债权'; }
+
+  var recvBefore = calc().receivable;          // 记账前的应收款余额，用于提示本次利息
+
+  db.txs.push(tx);
+  save();
+  document.getElementById('f_amount').value = '';
+  document.getElementById('f_note').value = '';
+  document.getElementById('f_cost').value = '';
+  document.getElementById('f_shares').value = '';
+  document.getElementById('f_pay').value = 'bank';
+  document.getElementById('f_refundTo').value = 'bank';
+  refreshSymbolList();
+  autoDetect();
+  updateSellCost();
+
+  var msg = '已记账：' + TYPE_LABEL[fType] + ' ' + fmt(amount);
+  if(fType === 'expense' || fType === 'income') msg += ' → ' + cat;
+  if(fType === 'expense' && tx.pay === 'credit') msg += '（挂花呗，欠款计入负债）';
+  if(fType === 'refund') msg += ' → 冲减「'+cat+'」（'+(tx.refundTo==='credit'?'冲抵花呗欠款':'退回银行卡')+'）';
+  if(fType === 'buy') msg += ' → ' + symLabel(tx.symbol);
+  if(fType === 'sell') msg += ' → ' + symLabel(tx.symbol) + ' 已实现盈亏 ' + fmt(amount - tx.cost);
+  if(fType === 'lend') msg += ' → 转入其他应收款（未收回 ' + fmt(recvBefore + amount) + '）';
+  if(fType === 'collect'){
+    var interest = amount - Math.min(Math.max(recvBefore, 0), amount);
+    msg += interest > 0.005 ? (' → 其中利息 ' + fmt(interest)) : ' → 冲减应收款';
+  }
+  toast(msg);
+  renderEntryPreview();
+}
+
+/* ===================== 视图渲染 ===================== */
+function renderEntryPreview(){
+  var c = calc();
+  var box = document.getElementById('entryPreview');
+  box.innerHTML =
+    '<h2>当前账面</h2>' +
+    '<div class="kpis">' +
+      '<div class="kpi"><div class="k">银行存款</div><div class="v">'+fmt(c.bank)+'</div></div>' +
+      '<div class="kpi"><div class="k">证券市值</div><div class="v">'+fmt(c.stockMarket)+'</div></div>' +
+      '<div class="kpi"><div class="k">其他应收款</div><div class="v">'+fmt(c.receivable)+'</div></div>' +
+      '<div class="kpi"><div class="k">负债</div><div class="v">'+fmt(c.debt)+'</div></div>' +
+      '<div class="kpi"><div class="k">净资产</div><div class="v">'+fmt(c.net)+'</div></div>' +
+    '</div>' +
+    '<div class="note-box">证券：成本 '+fmt(c.stockCost)+' ，市值 '+fmt(c.stockMarket)+
+    ' ，浮动盈亏 <span class="'+(c.floatPL>=0?'up':'down')+'">'+fmt(c.floatPL)+'</span>'+
+    ' ；累计已实现投资收益（含逆回购利息）<span class="'+(c.realized>=0?'up':'down')+'">'+fmt(c.realized)+'</span>'+
+    (c.receivable > 0.005 ? '<br>其他应收款（借出未收回）'+fmt(c.receivable)+' —— 这不是支出，只是钱暂时借出去了' : '') +
+    '</div>';
+}
+
+function tagOf(t){
+  if(t.type==='income' || t.type==='expense') return '<span class="tag '+TYPE_TAG[t.type]+'">'+TYPE_LABEL[t.type]+'</span>';
+  return '<span class="tag '+TYPE_TAG[t.type]+'">'+TYPE_LABEL[t.type]+'</span>';
+}
+
+function renderList(){
+  var months = allMonths();
+  var cur = window.__listMonth || months[0];
+  var rows = db.txs.filter(function(t){ return t.date.slice(0,7) === cur; })
+                    .sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+  var r = monthReport(cur);
+
+  var html = '<div class="card"><h2>流水 · '+cur+'</h2>';
+  html += '<div class="field" style="max-width:200px"><label>选择月份</label><select id="listMonth">' +
+    months.map(function(m){ return '<option'+(m===cur?' selected':'')+'>'+m+'</option>'; }).join('') +
+    '</select></div>';
+
+  if(!rows.length){
+    html += '<div class="empty">这个月还没有记录</div>';
+  }else{
+    html += '<table><thead><tr><th>日期</th><th>类型</th><th>科目</th><th>说明</th><th class="num">金额</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(t){
+      var cls = (t.type==='income') ? 'up' : (t.type==='expense' || t.type==='refund' || t.type==='repay') ? 'down' : '';
+      var amt;
+      if(t.type==='expense' || t.type==='repay' || t.type==='lend') amt = '-'+fmt(t.amount);
+      else if(t.type==='refund' || t.type==='borrow' || t.type==='collect') amt = '+'+fmt(t.amount);
+      else amt = fmt(t.amount);
+      var catTxt;
+      if(t.type==='buy' || t.type==='sell'){
+        catTxt = esc(symLabel(symKey(t)));
+        if(t.shares) catTxt += ' <span class="muted">'+t.shares.toLocaleString('zh-CN')+' 股/份</span>';
+        if(t.type==='sell' && t.cost != null) catTxt += ' <span class="muted">成本'+fmt(t.cost)+'</span>';
+      }else{
+        catTxt = esc(t.category||'—');
+        if(t.type==='expense' && t.pay==='credit') catTxt += ' <span class="tag debt">花呗·信用卡</span>';
+        if(t.type==='refund') catTxt += ' <span class="tag refund">'+(t.refundTo==='credit'?'冲抵花呗':'退回银行卡')+'</span>';
+      }
+      html += '<tr>' +
+        '<td class="muted">'+esc(t.date.slice(5))+'</td>' +
+        '<td>'+tagOf(t)+'</td>' +
+        '<td>'+catTxt+'</td>' +
+        '<td>'+esc(t.note||'—')+'</td>' +
+        '<td class="num '+cls+'">'+amt+'</td>' +
+        '<td class="num"><button class="del" data-del="'+t.id+'">删除</button></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '<div class="note-box">本月收入 '+fmt(r.incT)+' ；本月支出 '+fmt(r.expT)+
+          ' ；本月结余 '+fmt(r.surplus)+'（含已实现投资收益 '+fmt(r.realized)+'）</div>';
+  html += '</div>';
+
+  document.getElementById('view').innerHTML = html;
+  document.getElementById('listMonth').onchange = function(){ window.__listMonth = this.value; renderList(); };
+  [].slice.call(document.querySelectorAll('[data-del]')).forEach(function(b){
+    b.onclick = function(){
+      var id = this.getAttribute('data-del');
+      db.txs = db.txs.filter(function(t){ return t.id !== id; });
+      save(); renderList(); toast('已删除');
+    };
+  });
+}
+
+function renderReport(){
+  var months = allMonths();
+  var cur = window.__repMonth || months[0];
+  var r = monthReport(cur);
+
+  var expKeys = Object.keys(r.exp).sort(function(a,b){ return r.exp[b]-r.exp[a]; });
+  var maxExp = 1;
+  expKeys.forEach(function(k){ maxExp = Math.max(maxExp, Math.abs(r.exp[k])); });
+
+  var html = '<div class="card"><h2>月度损益表 · '+cur+'</h2>';
+  html += '<div class="field" style="max-width:200px"><label>选择月份</label><select id="repMonth">' +
+    months.map(function(m){ return '<option'+(m===cur?' selected':'')+'>'+m+'</option>'; }).join('') +
+    '</select></div>';
+
+  html += '<div class="kpis">' +
+    '<div class="kpi"><div class="k">收入合计</div><div class="v up">'+fmt(r.incT)+'</div></div>' +
+    '<div class="kpi"><div class="k">费用合计</div><div class="v down">'+fmt(r.expT)+'</div></div>' +
+    '<div class="kpi"><div class="k">已实现投资收益</div><div class="v '+(r.realized>=0?'up':'down')+'">'+fmt(r.realized)+'</div></div>' +
+    '<div class="kpi"><div class="k">本月结余</div><div class="v '+(r.surplus>=0?'up':'down')+'">'+fmt(r.surplus)+'</div></div>' +
+  '</div>';
+
+  html += '<h3>收入明细</h3>';
+  if(Object.keys(r.inc).length){
+    html += '<table><tbody>';
+    Object.keys(r.inc).forEach(function(k){
+      html += '<tr><td>'+esc(k)+'</td><td class="num up">'+fmt(r.inc[k])+'</td></tr>';
+    });
+    html += '<tr><td><b>合计</b></td><td class="num up"><b>'+fmt(r.incT)+'</b></td></tr></tbody></table>';
+  }else{ html += '<div class="empty">本月无收入记录</div>'; }
+
+  html += '<h3>支出明细（按类别）</h3>';
+  if(r.refundT){
+    html += '<div class="hint">本月含退款冲减 '+fmt(r.refundT)+
+            '，已从对应科目中扣除（不计入收入）。若某科目本月支出少于退款额，会显示为负数。</div>';
+  }
+  if(expKeys.length){
+    html += '<div class="bars">';
+    expKeys.forEach(function(k){
+      var v = r.exp[k];
+      var pct = Math.abs(v)/maxExp*100;
+      html += '<div class="bar-row"><span class="bar-label">'+esc(k)+'</span>' +
+        '<div class="bar-track"><div class="bar-fill'+(v<0?' neg':'')+'" style="width:'+pct.toFixed(1)+'%"></div></div>' +
+        '<span class="bar-val down">'+fmt(v)+'</span></div>';
+    });
+    html += '</div>';
+    html += '<table style="margin-top:12px"><tbody>';
+    expKeys.forEach(function(k){
+      var ratio = r.expT ? (r.exp[k]/r.expT*100) : 0;
+      html += '<tr><td>'+esc(k)+'</td><td class="num muted">'+ratio.toFixed(1)+'%</td><td class="num down">'+fmt(r.exp[k])+'</td></tr>';
+    });
+    html += '<tr><td><b>合计</b></td><td></td><td class="num down"><b>'+fmt(r.expT)+'</b></td></tr></tbody></table>';
+  }else{ html += '<div class="empty">本月无支出记录</div>'; }
+
+  html += '<div class="note-box"><b>平账公式：</b>本月结余 = 收入 '+fmt(r.incT)+' − 费用 '+fmt(r.expT)+
+          ' + 已实现投资收益 '+fmt(r.realized)+' = <b>'+fmt(r.surplus)+'</b>'+
+          (r.refundT ? '（费用已扣减退款冲减 '+fmt(r.refundT)+'）' : '') + '<br>'+
+          '净现金流 = 流入 '+fmt(r.cashIn)+' − 流出 '+fmt(r.cashOut)+' = '+fmt(r.cashIn - r.cashOut)+
+          '（含买卖股票、借贷，不等于结余）</div>';
+  html += '</div>';
+
+  document.getElementById('view').innerHTML = html;
+  document.getElementById('repMonth').onchange = function(){ window.__repMonth = this.value; renderReport(); };
+}
+
+function renderAssets(){
+  var c = calc();
+  var o = opening();
+
+  var html = '<div class="card"><h2>资产总览</h2>';
+  html += '<div class="kpis">' +
+    '<div class="kpi"><div class="k">银行存款</div><div class="v">'+fmt(c.bank)+'</div></div>' +
+    '<div class="kpi"><div class="k">证券市值</div><div class="v">'+fmt(c.stockMarket)+'</div></div>' +
+    '<div class="kpi"><div class="k">其他应收款</div><div class="v">'+fmt(c.receivable)+'</div></div>' +
+    '<div class="kpi"><div class="k">负债</div><div class="v">'+fmt(c.debt)+'</div></div>' +
+    '<div class="kpi"><div class="k">净资产</div><div class="v">'+fmt(c.net)+'</div></div>' +
+  '</div>';
+
+  var st = c.analytics;
+  html += '<h3>证券持仓（分标的核算 · 场内 ETF / 股票 / 场外基金）</h3>';
+  if(st.gap > 0) html += '<div class="hint warn">有 '+st.gap+' 笔买卖没填数量，未参与 FIFO 批次计算，建议补填。</div>';
+  if(st.unpriced.length) html += '<div class="hint warn">以下标的还没填现价，暂按成本估值（浮盈记 0）：'+esc(st.unpriced.join('、'))+'</div>';
+  html += '<div class="kpis">' +
+    '<div class="kpi"><div class="k">持仓数量</div><div class="v">'+st.shares.toLocaleString('zh-CN')+'</div></div>' +
+    '<div class="kpi"><div class="k">持仓成本</div><div class="v">'+fmt(st.fifoCost)+'</div></div>' +
+    '<div class="kpi"><div class="k">持仓市值</div><div class="v">'+fmt(st.market)+'</div></div>' +
+    '<div class="kpi"><div class="k">浮动盈亏</div><div class="v '+(st.floatPL>=0?'up':'down')+'">'+fmt(st.floatPL)+'</div></div>' +
+    '<div class="kpi"><div class="k">累计已实现</div><div class="v '+(st.realized>=0?'up':'down')+'">'+fmt(st.realized)+'</div></div>' +
+  '</div>';
+
+  html += '<h3>在持标的</h3>';
+  if(st.held.length){
+    html += '<div style="overflow-x:auto"><table><thead><tr><th>标的</th><th class="num">数量</th><th class="num">单位成本</th><th class="num">现价/净值</th><th class="num">市值</th><th class="num">浮动盈亏</th><th class="num">累计已实现</th></tr></thead><tbody>';
+    st.held.forEach(function(r){
+      html += '<tr>' +
+        '<td>'+esc(symLabel(r.symbol))+'</td>' +
+        '<td class="num">'+r.shares.toLocaleString('zh-CN')+'</td>' +
+        '<td class="num">'+fmt(r.fifoPer)+'</td>' +
+        '<td class="num">'+(r.priced ? fmt(r.price) : '<span class="muted">未填</span>')+'</td>' +
+        '<td class="num">'+fmt(r.market)+'</td>' +
+        '<td class="num '+(r.floatPL>=0?'up':'down')+'">'+fmt(r.floatPL)+'</td>' +
+        '<td class="num '+(r.realized>=0?'up':'down')+'">'+fmt(r.realized)+'</td>' +
+      '</tr>';
+    });
+    html += '<tr><td><b>合计</b></td>' +
+      '<td class="num"><b>'+st.shares.toLocaleString('zh-CN')+'</b></td>' +
+      '<td class="num"><b>'+fmt(st.fifoPer)+'</b></td><td></td>' +
+      '<td class="num"><b>'+fmt(st.market)+'</b></td>' +
+      '<td class="num '+(st.floatPL>=0?'up':'down')+'"><b>'+fmt(st.floatPL)+'</b></td>' +
+      '<td class="num '+(st.realized>=0?'up':'down')+'"><b>'+fmt(st.realized)+'</b></td></tr>';
+    html += '</tbody></table></div>';
+    html += '<div class="note-box">「累计已实现」= 这只标的<b>历史卖出</b>累计赚/亏，和现在还持不持有无关；'+
+            '「浮动盈亏」= 还持有那部分按现价算的账面盈亏，没卖就不算数。两者分开，才看清谁真的赚了。</div>';
+  }else{
+    html += '<div class="empty">当前没有在持标的</div>';
+  }
+
+  if(st.cleared.length){
+    html += '<h3>已清仓标的</h3>';
+    html += '<table><thead><tr><th>标的</th><th class="num">累计卖出</th><th class="num">累计结转成本</th><th class="num">累计已实现</th></tr></thead><tbody>';
+    st.cleared.forEach(function(r){
+      html += '<tr><td>'+esc(symLabel(r.symbol))+'</td>' +
+        '<td class="num">'+fmt(r.sellNet)+'</td>' +
+        '<td class="num">'+fmt(r.sellCost)+'</td>' +
+        '<td class="num '+(r.realized>=0?'up':'down')+'"><b>'+fmt(r.realized)+'</b></td></tr>';
+    });
+    html += '</tbody></table>';
+    html += '<div class="note-box">清仓后持仓归零，盈亏<b>定格在「累计已实现」里独立留存</b>，不会被其他持仓的浮动盈亏掩盖。'+
+            '只有按标的分开统计才拿得到这个数——几只股票混在一个池子里算，会把别人的成本串进来，亏损甚至会被算成盈利。</div>';
+  }
+
+  html += '<h3>现价 / 券商成本价（逐只录入）</h3>';
+  if(st.list.length){
+    html += '<div style="overflow-x:auto"><table><thead><tr><th>标的</th><th class="num">现价 / 净值（元）</th><th class="num">券商成本价</th></tr></thead><tbody>';
+    st.list.forEach(function(r){
+      html += '<tr><td>'+esc(symLabel(r.symbol))+'</td>' +
+        '<td class="num"><input type="text" data-calc inputmode="decimal" autocomplete="off" data-price="'+esc(r.symbol)+'" value="'+(r.price==null?'':r.price)+'" placeholder="现价 / 净值" style="min-width:92px;text-align:right"></td>' +
+        '<td class="num"><input type="text" data-calc inputmode="decimal" autocomplete="off" data-broker="'+esc(r.symbol)+'" value="'+(r.brokerPer==null?'':r.brokerPer)+'" placeholder="券商App显示" style="min-width:92px;text-align:right"></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<button class="ghost" id="savePrices" style="margin-top:10px">保存现价与券商成本价</button>';
+  }else{
+    html += '<div class="empty">还没有证券记录 —— 去「记一笔」选「买入证券」，填标的代码和数量（场内 ETF 填股数，场外基金填份额，可带小数）。</div>';
+  }
+
+  html += '<h3>成本口径对照（组合整体）</h3>';
+  html += '<table><thead><tr><th>口径</th><th class="num">单位成本</th><th class="num">持仓总成本</th><th class="num">与 FIFO 差异</th></tr></thead><tbody>';
+  var rowOf = function(label, per, cost){
+    var diff = cost - st.fifoCost;
+    var diffTxt = (Math.abs(diff) < 0.005) ? '—' : fmt(diff);
+    var diffCls = (Math.abs(diff) < 0.005) ? 'muted' : (diff >= 0 ? 'up' : 'down');
+    return '<tr><td>'+label+'</td><td class="num">'+fmt(per)+'</td><td class="num">'+fmt(cost)+
+           '</td><td class="num '+diffCls+'">'+diffTxt+'</td></tr>';
+  };
+  html += rowOf('<b>FIFO</b> <span class="tag invest">记账口径</span>', st.fifoPer, st.fifoCost);
+  html += rowOf('移动加权平均', st.avgPer, st.avgCost);
+  html += rowOf('摊薄成本 <span class="tag">券商默认</span>', st.dilutedPer, st.dilutedCost);
+  html += '</tbody></table>';
+  html += '<div class="note-box">三种口径只差在「已实现 vs 未实现」的拆分，<b>累计总盈亏完全相同</b>；' +
+          '净资产 = 银行 + 市值 − 负债，也与口径无关。券商 App 显示的是「摊薄成本」，逐只差异请对照上方录入区的「券商成本价」列。</div>';
+
+
+  html += '<h3>资产明细</h3>';
+  html += '<table><thead><tr><th>科目</th><th class="num">金额</th><th class="num">说明</th></tr></thead><tbody>';
+  html += '<tr><td>银行存款（账面）</td><td class="num">'+fmt(c.bank)+'</td><td class="num muted">期初 '+fmt(o.bank)+'</td></tr>';
+  html += '<tr><td>证券投资（FIFO 成本）</td><td class="num">'+fmt(c.stockCost)+'</td><td class="num muted">'+st.held.length+' 只在持 · '+st.shares.toLocaleString('zh-CN')+' 股/份</td></tr>';
+  html += '<tr><td>股票投资（市值调整）</td><td class="num '+(c.floatPL>=0?'up':'down')+'">'+fmt(c.floatPL)+'</td><td class="num muted">浮动盈亏</td></tr>';
+  html += '<tr><td>其他应收款（借出 / 国债逆回购）</td><td class="num">'+fmt(c.receivable)+'</td><td class="num muted">期末未收回本金</td></tr>';
+  html += '<tr><td><b>资产合计</b></td><td class="num"><b>'+fmt(c.assets)+'</b></td><td class="num muted">银行 + 应收 + 证券市值</td></tr>';
+  html += '<tr><td>负债合计</td><td class="num">'+fmt(c.debt)+'</td><td class="num muted">花呗/信用卡待还 + 借款</td></tr>';
+  html += '<tr><td><b>净资产 = 资产 − 负债</b></td><td class="num"><b>'+fmt(c.net)+'</b></td><td class="num muted">= 银行 + 应收 + 市值 − 负债</td></tr>';
+  html += '</tbody></table>';
+
+  html += '<h3>账实核对</h3>';
+  html += '<div class="row">' +
+    '<div><label style="font-size:12px;color:var(--t2)">银行卡/微信实际余额（可选）</label>' +
+    '<input type="text" id="realBank" data-calc inputmode="decimal" autocomplete="off" placeholder="填实际余额"></div>' +
+    '<div><label style="font-size:12px;color:var(--t2)">券商显示的总持仓市值（可选）</label>' +
+    '<input type="text" id="realMarket" data-calc inputmode="decimal" autocomplete="off" placeholder="填券商总市值"></div>' +
+  '</div>';
+  html += '<div id="reconResult" class="note-box" style="display:none"></div>';
+
+  html += '<div class="note-box"><b>平账校验：</b>净资产 '+fmt(c.net)+' = 银行 '+fmt(c.bank)+' + 其他应收款 '+fmt(c.receivable)+' + 证券市值 '+
+          fmt(c.stockMarket)+' − 负债 '+fmt(c.debt)+' → 恒等成立（借贷自动平衡）。<br>'+
+          '「账实核对」是把系统算出的账面余额和你手机银行里的真实余额比对，差额就是你漏记的账。</div>';
+  html += '</div>';
+
+  document.getElementById('view').innerHTML = html;
+
+  var sp = document.getElementById('savePrices');
+  if(sp) sp.onclick = function(){
+    db.marketPrices = db.marketPrices || {};
+    db.brokerPrices = db.brokerPrices || {};
+    [].slice.call(document.querySelectorAll('[data-price]')).forEach(function(inp){
+      var sym = inp.getAttribute('data-price');
+      var r = calcField(inp.value);
+      if(String(inp.value||'').trim() === '' || !r.ok || r.val == null) delete db.marketPrices[sym];
+      else db.marketPrices[sym] = r.val;
+    });
+    [].slice.call(document.querySelectorAll('[data-broker]')).forEach(function(inp){
+      var sym = inp.getAttribute('data-broker');
+      var r = calcField(inp.value);
+      if(String(inp.value||'').trim() === '' || !r.ok || r.val == null) delete db.brokerPrices[sym];
+      else db.brokerPrices[sym] = r.val;
+    });
+    save(); renderAssets(); renderEntryPreview();
+    toast('现价与券商成本价已保存');
+  };
+
+  var rb = document.getElementById('realBank'), rm = document.getElementById('realMarket');
+  function recon(){
+    var box = document.getElementById('reconResult');
+    var msgs = [];
+    function num(el){ var r = calcField(el.value); return (String(el.value||'').trim() === '' || !r.ok || r.val == null) ? null : r.val; }
+    var bv = num(rb);
+    var mv = num(rm);
+    if(bv != null && !isNaN(bv)){
+      var d = bv - c.bank;
+      msgs.push(Math.abs(d) < 0.005
+        ? '✓ 银行存款<b>账实相符</b>：实际 '+fmt(bv)+' = 账面 '+fmt(c.bank)+'，没有漏记。'
+        : '⚠️ 银行存款不符：实际 '+fmt(bv)+' − 账面 '+fmt(c.bank)+' = <span class="'+(d>=0?'up':'down')+'">'+fmt(d)+'</span>。'+
+          (d > 0 ? '实际比账面多，可能漏记了收入，或少记了支出。' : '实际比账面少，可能漏记了某笔支出。'));
+    }
+    if(mv != null && !isNaN(mv)){
+      var d2 = mv - st.market;
+      msgs.push(Math.abs(d2) < 0.005
+        ? '✓ 证券市值<b>账实相符</b>：券商 '+fmt(mv)+' = 账面 '+fmt(st.market)+'。'
+        : '⚠️ 证券市值不符：券商 '+fmt(mv)+' − 账面 '+fmt(st.market)+' = <span class="'+(d2>=0?'up':'down')+'">'+fmt(d2)+'</span>。'+
+          '可能是现价没更新、漏记了某笔买卖，或漏录了某只标的。');
+    }
+    if(!msgs.length){ box.style.display='none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = msgs.join('<br>');
+  }
+  rb.oninput = recon; rm.oninput = recon;
+}
+
+/* ---------- 期初持仓：逐只录入表 ---------- */
+function renderPosRows(poss){
+  var box = document.getElementById('posRows');
+  if(!box) return;
+  var h = '<div style="overflow-x:auto"><table><thead><tr><th>代码</th><th>名称（选填）</th><th class="num">数量（股 / 份）</th><th class="num">建仓成本</th><th></th></tr></thead><tbody>';
+  if(!poss.length){
+    h += '<tr><td colspan="5" class="muted" style="text-align:center;padding:14px">还没有期初持仓（没有股票就留空）</td></tr>';
+  }
+  poss.forEach(function(p, i){
+    h += '<tr>' +
+      '<td><input type="text" data-pos="symbol" data-i="'+i+'" value="'+esc(p.symbol)+'" placeholder="510300" autocomplete="off" style="min-width:78px"></td>' +
+      '<td><input type="text" data-pos="name" data-i="'+i+'" value="'+esc(p.name)+'" placeholder="选填" autocomplete="off" style="min-width:78px"></td>' +
+      '<td class="num"><input type="text" data-calc data-pos="shares" data-i="'+i+'" value="'+(p.shares||'')+'" inputmode="decimal" autocomplete="off" style="min-width:72px;text-align:right"></td>' +
+      '<td class="num"><input type="text" data-calc data-pos="cost" data-i="'+i+'" value="'+(p.cost||'')+'" inputmode="decimal" autocomplete="off" style="min-width:82px;text-align:right"></td>' +
+      '<td class="num"><button class="del" data-delpos="'+i+'">删除</button></td>' +
+    '</tr>';
+  });
+  h += '</tbody></table></div>';
+  box.innerHTML = h;
+
+  [].slice.call(box.querySelectorAll('[data-delpos]')).forEach(function(b){
+    b.onclick = function(){
+      syncPosFromDom();
+      var i = Number(this.getAttribute('data-delpos'));
+      window.__poss.splice(i, 1);
+      renderPosRows(window.__poss);
+    };
+  });
+}
+function syncPosFromDom(){
+  var rows = [].slice.call(document.querySelectorAll('[data-pos]'));
+  if(!rows.length) return;
+  var map = {};
+  rows.forEach(function(inp){
+    var i = Number(inp.getAttribute('data-i'));
+    var k = inp.getAttribute('data-pos');
+    if(!map[i]) map[i] = { symbol:'', name:'', shares:0, cost:0 };
+    if(k === 'shares' || k === 'cost') map[i][k] = readNum(inp, 0);
+    else map[i][k] = inp.value;
+  });
+  window.__poss = Object.keys(map).sort(function(a,b){ return a-b; }).map(function(k){ return map[k]; });
+}
+
+function renderSetup(){
+  var o = opening();
+  if(!o.positions) o.positions = [];
+  window.__poss = o.positions.map(function(p){
+    return { symbol:String(p.symbol||''), name:secName(symKey(p)), shares:Number(p.shares)||0, cost:Number(p.cost)||0 };
+  });
+
+  var html = '<div class="card"><h2>期初设置</h2>';
+  html += '<p class="muted" style="font-size:12.5px;margin:0 0 12px">开始记账前先设定一个基准时点的余额，之后所有收支都基于它滚算。</p>';
+  html += '<div class="note-box"><b>「银行存款」是一个现金池，不是某一张卡。</b>把银行卡、支付宝余额、微信零钱、券商可用<b>加总</b>填进来，<b>不用按平台分账</b>。' +
+          '它们之间的互转（微信→卡、卡→卡、银证转账、支付宝提现）都只是<b>池子里换地方放</b>，<b>不用记</b>；只有被扣的手续费才记一笔「支出」。' +
+          '<br><b>余额宝 / 零钱通</b>是货币基金、流动性等同现金，一并算进这个池子即可；每天的收益按周或按月汇总记一笔「收入 → 投资收益」，不必逐日录。</div>';
+  html += '<div class="row">' +
+    '<div><label style="font-size:12px;color:var(--t2)">银行存款（现金池合计）</label><div class="calc-row"><input type="text" id="o_bank" data-calc inputmode="decimal" autocomplete="off" value="'+(o.bank||0)+'"><button type="button" class="calcbtn" data-calc-open="o_bank" title="打开计算器">＝</button></div></div>' +
+    '<div><label style="font-size:12px;color:var(--t2)">其他应收款（借出未收回）</label><div class="calc-row"><input type="text" id="o_recv" data-calc inputmode="decimal" autocomplete="off" value="'+(o.receivable||0)+'"><button type="button" class="calcbtn" data-calc-open="o_recv" title="打开计算器">＝</button></div></div>' +
+    '<div><label style="font-size:12px;color:var(--t2)">负债（花呗/信用卡/借款）</label><div class="calc-row"><input type="text" id="o_debt" data-calc inputmode="decimal" autocomplete="off" value="'+(o.debt||0)+'"><button type="button" class="calcbtn" data-calc-open="o_debt" title="打开计算器">＝</button></div></div>' +
+  '</div>';
+
+  html += '<h3>期初证券持仓（逐只录入）</h3>';
+  html += '<p class="muted" style="font-size:12.5px;margin:0 0 10px">每只单独一行，填<b>开始记账那天</b>实际持有的数量与建仓成本（可用券商 App / 支付宝的「成本价 × 数量」）。'+
+          '场内 ETF 是整数股，<b>场外基金（支付宝 / 天天基金）填份额，可带小数</b>；宁可先空着，也别把几只标的并成一个总数 —— 混在一起会让个券盈亏全算错。</p>';
+  html += '<div id="posRows"></div>';
+  html += '<button class="ghost" id="addPos" style="margin-top:8px">+ 添加一只</button>';
+  html += '<button class="primary" id="saveOpening" style="margin-top:12px">保存期初余额</button>';
+  html += '<div class="note-box"><b>已清仓的股票不用录。</b>它的盈亏发生在期初之前，已经反映在你的期初余额（银行 + 持仓）里了，再录一遍就是重复计算。'+
+          '期初只录<b>开始记账那天还持有</b>的标的。</div>';
+  html += '</div>';
+
+  html += '<div class="card"><h2>数据管理</h2>';
+  html += '<div class="row">';
+  html += '<button class="ghost" id="expJson">导出备份（JSON）</button>';
+  html += '<button class="ghost" id="copyJson">复制备份到剪贴板</button>';
+  html += '<button class="ghost" id="expCsv">导出流水（CSV）</button>';
+  html += '<button class="ghost" id="impJson">导入备份</button>';
+  html += '<button class="ghost" id="loadDemo">载入示例数据</button>';
+  html += '<button class="ghost" id="clearAll" style="color:var(--up)">清空全部数据</button>';
+  html += '</div>';
+  html += '<input type="file" id="fileInput" accept="application/json,.json,text/plain,*/*" style="display:none">';
+  if(hasUndo()){
+    html += '<button class="ghost" id="undoImport" style="margin-top:8px;color:var(--amber)">↩ 撤销上次导入（回到导入前的账本）</button>';
+  }
+  html += '<div class="note-box">共 '+db.txs.length+' 笔记录。数据只存在本机（浏览器 / App 各自独立），换手机、换 App、清理浏览器前请先导出 JSON 备份。'+
+          (db.lastBackup ? '<br>上次备份：'+esc(db.lastBackup)+'（'+daysSince(db.lastBackup)+' 天前）' : '<br>⚠️ 还没有备份过，建议现在就导出一份。')+
+          '<br><b>换手机 / 网页版搬进 App：</b>在<b>有数据的那个</b>记账本里点「导出备份（JSON）」→ 把 json 文件传到新手机 → 在新设备的「导入备份」里选中它。</div>';
+  html += '<details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:var(--t2)">导入不成功？改用手动粘贴</summary>'+
+          '<p class="muted" style="font-size:12.5px;margin:8px 0">把备份 json 的全部内容复制过来，粘贴到下面再点「粘贴导入」。手机之间传文件不方便时走这条。</p>'+
+          '<textarea class="ta" id="impPasteBox" rows="4" placeholder=\'{"version":5,"opening":{...},"txs":[...]}\'></textarea>'+
+          '<div class="row" style="margin-top:8px"><button class="ghost" id="impPaste">粘贴导入</button><button class="ghost" id="impPasteClear">清空输入框</button></div></details>';
+  html += '</div>';
+
+  document.getElementById('view').innerHTML = html;
+
+  renderPosRows(window.__poss);
+  document.getElementById('addPos').onclick = function(){
+    syncPosFromDom();
+    window.__poss.push({ symbol:'', name:'', shares:0, cost:0 });
+    renderPosRows(window.__poss);
+  };
+
+  document.getElementById('saveOpening').onclick = function(){
+    flushCalcs();                                    // 期初数字框里的算式先算掉
+    syncPosFromDom();
+    var b = readNum('o_bank', 0);
+    var rc = readNum('o_recv', 0);
+    var d = readNum('o_debt', 0);
+    var positions = (window.__poss||[]).filter(function(p){
+      return String(p.symbol||'').trim() !== '' && (Number(p.shares)||0) > 0;
+    }).map(function(p){
+      var sym = String(p.symbol).trim();
+      registerName(sym, p.name);
+      return { symbol:sym, shares:Number(p.shares)||0, cost:Number(p.cost)||0 };
+    });
+    db.opening = { bank:b, receivable:rc, debt:d, positions:positions };
+    save();
+    toast('期初余额已保存（'+positions.length+' 只持仓）');
+    renderSetup(); renderEntryPreview(); refreshSymbolList();
+  };
+
+  document.getElementById('expJson').onclick = exportJson;
+  document.getElementById('copyJson').onclick = copyBackup;
+  document.getElementById('expCsv').onclick = function(){
+    var head = '日期,类型,标的,名称,科目,说明,支付方式,金额,数量,卖出成本(FIFO)\n';
+    var body = db.txs.map(function(t){
+      var pay = (t.type==='expense') ? (t.pay==='credit' ? '花呗/信用卡' : '银行卡')
+              : (t.type==='refund'  ? (t.refundTo==='credit' ? '冲抵花呗' : '退回银行卡') : '');
+      var isStock = (t.type==='buy' || t.type==='sell');
+      var sym = isStock ? symKey(t) : '';
+      return [t.date, TYPE_LABEL[t.type]||t.type,
+              (isStock && sym !== '未分类') ? sym : '',
+              isStock ? secName(sym) : '',
+              t.category||'', '"'+String(t.note||'').replace(/"/g,'""')+'"',
+              pay, t.amount, (t.shares==null?'':t.shares), (t.cost==null?'':t.cost)].join(',');
+    }).join('\n');
+    download('记账流水_'+todayStr()+'.csv', '\ufeff'+head+body, 'text/csv');
+  };
+  document.getElementById('impJson').onclick = function(){ document.getElementById('fileInput').click(); };
+  document.getElementById('fileInput').onchange = function(e){
+    var f = e.target.files[0]; if(!f) return;
+    var fr = new FileReader();
+    fr.readAsText(f);
+    fr.onload = function(){ applyImportText(String(fr.result), f.name); };
+    fr.onerror = function(){ toast('读不到这个文件，换个位置再试'); };
+    e.target.value = '';                                  // 同一个文件连选两次也要能触发
+  };
+  var pb = document.getElementById('impPaste');
+  if(pb) pb.onclick = function(){
+    var box = document.getElementById('impPasteBox');
+    applyImportText(box ? box.value : '', '粘贴内容');
+  };
+  var pc = document.getElementById('impPasteClear');
+  if(pc) pc.onclick = function(){
+    var box = document.getElementById('impPasteBox'); if(box) box.value = '';
+  };
+  var ub = document.getElementById('undoImport');
+  if(ub) ub.onclick = function(){
+    var snap = readUndo();
+    if(!snap){ toast('没有可撤销的备份'); return; }
+    if(!confirm('把账本退回到上次导入之前的状态？当前数据会被替换（当前数据仍可先导出备份）。')) return;
+    try{
+      db = migrateDatabase(JSON.parse(snap));
+      save(); clearUndo();
+      toast('已撤销导入，回到 '+db.txs.length+' 笔记录');
+      renderSetup(); renderEntryPreview(); refreshSymbolList();
+    }catch(err){ toast('撤销失败：备份内容已损坏'); }
+  };
+  document.getElementById('loadDemo').onclick = function(){
+    if(db.txs.length && !confirm('会覆盖当前数据，确定载入示例？')) return;
+    loadDemo(); toast('示例数据已载入'); renderSetup(); renderEntryPreview();
+  };
+  document.getElementById('clearAll').onclick = function(){
+    if(!confirm('将删除全部记录与期初设置，且无法恢复。确定？')) return;
+    db = { version:5, opening:null, txs:[], marketPrices:{}, brokerPrices:{}, securityNames:{} }; save();
+    toast('已清空'); renderSetup(); renderEntryPreview(); refreshSymbolList();
+  };
+}
+
+/* ===================== 原生能力桥 =====================
+ * 同一份源码要跑在三种环境里：浏览器直接打开、PWA 添加到主屏幕、安卓 App（Capacitor）。
+ * 只有安卓 App 里才存在 window.Capacitor.isNativePlatform，其余环境所有原生分支自动跳过，
+ * 行为与加入本段之前完全一致 —— 也就是说这里不会破坏已经装好的 PWA 版本。
+ */
+var Native = (function(){
+  var cap = window.Capacitor;
+  var isApp = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+  return {
+    isApp: isApp,
+    platform: isApp ? cap.getPlatform() : 'web',
+    plugin: function(name){
+      return (isApp && cap.Plugins && cap.Plugins[name]) || null;
+    }
+  };
+})();
+
+/* 导出文件。
+ * 浏览器 / PWA：走 Blob 下载（原逻辑）。
+ * 安卓 App：WebView 里 <a download> 不会触发系统下载，必须改走原生文件系统，
+ *          写好后调起系统分享面板，由用户决定存到网盘还是发给自己。
+ * 这条路径是数据安全的命脉 —— 账本只存在本机，导出是唯一的逃生通道。
+ */
+function download(name, content, type){
+  var FS = Native.plugin('Filesystem');
+  if(FS && typeof FS.writeFile === 'function'){
+    var b64;
+    try{ b64 = btoa(unescape(encodeURIComponent(content))); }
+    catch(e){ toast('内容编码失败：' + e.message); return; }
+    /* 写进 CACHE 目录：无需任何存储权限，必定成功；再交给系统分享面板另存 */
+    FS.writeFile({ path: name, data: b64, directory: 'CACHE' })
+      .then(function(res){
+        var SH = Native.plugin('Share');
+        if(SH && typeof SH.share === 'function' && res && res.uri){
+          SH.share({
+            title: name,
+            files: [res.uri],
+            dialogTitle: '保存备份到网盘 / 发给自己'
+          })
+            .then(function(){ toast('备份已导出：' + name); })
+            .catch(function(){ toast('备份已生成，未分享：' + name); });
+        }else{
+          toast('备份已导出：' + name);
+        }
+      })
+      .catch(function(err){
+        toast('导出失败：' + ((err && err.message) || err));
+      });
+    return;
+  }
+  var blob = new Blob([content], {type:type+';charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+/* 导出 JSON 备份（同时记录备份日期，用于备份提醒） */
+function exportJson(){
+  db.lastBackup = todayStr();
+  save();
+  download('记账备份_'+todayStr()+'.json', JSON.stringify(db, null, 2), 'application/json');
+  renderBackupTip();
+}
+
+/* ===================== 导入 =====================
+ * 导入是「整库覆盖」，不可在原文件上回退，所以做了三层保护：
+ *   1. 先解析校验，格式不对就直接拦下，不碰现有数据；
+ *   2. 库里已有记录时先弹确认（把「当前几笔 / 导入几笔 / 来自哪个文件」摆出来）；
+ *   3. 覆盖前把旧账本另存到一个独立的撤销槽，设置页可一键退回。
+ * 撤销槽存在单独的 localStorage 键里，不混进 db，导出的备份文件不会因此变胖。
+ */
+var UNDO_STORE = 'pl_ledger_undo';
+function readUndo(){ try{ return localStorage.getItem(UNDO_STORE); }catch(e){ return null; } }
+function hasUndo(){ return !!readUndo(); }
+function writeUndo(s){ try{ localStorage.setItem(UNDO_STORE, s); }catch(e){} }
+function clearUndo(){ try{ localStorage.removeItem(UNDO_STORE); }catch(e){} }
+
+function applyImportText(text, label){
+  text = String(text == null ? '' : text).trim();
+  if(!text){ toast('没拿到内容 —— 先选中备份文件，或把 json 粘贴到输入框'); return; }
+
+  var d;
+  try{ d = JSON.parse(text); }
+  catch(err){ toast('这不是合法的 JSON，导入失败（原数据未改动）'); return; }
+
+  if(Object.prototype.toString.call(d) === '[object Array]') d = { txs:d };
+  if(!d || Object.prototype.toString.call(d.txs) !== '[object Array]'){
+    toast('文件里没有记录列表（缺少 txs），导入失败'); return;
+  }
+
+  var oldN = db.txs.length, newN = d.txs.length;
+  if(oldN){
+    if(!confirm('导入会用备份整库覆盖当前账本：\n\n' +
+                '当前账本：' + oldN + ' 笔记录\n' +
+                '即将导入：' + newN + ' 笔记录（' + (label || '备份文件') + '）\n\n' +
+                '导入前的账本会自动留一份，之后可在设置里「撤销上次导入」。确定继续？')){
+      toast('已取消，数据未改动');
+      return;
+    }
+  }
+
+  writeUndo(JSON.stringify(db));
+
+  var next = { version:5, opening:null, txs:[], marketPrices:{}, brokerPrices:{}, securityNames:{}, lastBackup:null };
+  for(var k in d){ if(Object.prototype.hasOwnProperty.call(d, k)) next[k] = d[k]; }
+  db = migrateDatabase(next);                 // 旧格式备份在这里被补成当前结构
+  save();
+
+  var held = (db.opening && db.opening.positions) ? db.opening.positions.length : 0;
+  toast('导入成功：' + db.txs.length + ' 笔记录 · 期初持仓 ' + held + ' 只');
+  renderSetup(); renderEntryPreview(); refreshSymbolList();
+}
+
+/* 复制备份文本到剪贴板。
+ * 手机浏览器（尤其用 file:// 打开的页面）有时会拦下载，这时「复制」就是唯一出口：
+ * 复制 → 粘到备忘录 / 发给自己 → 在 App 的「手动粘贴导入」里粘回来。
+ */
+function copyText(txt, okMsg){
+  function fallback(){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly','');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      ta.setSelectionRange(0, txt.length);
+      var ok = document.execCommand('copy');
+      ta.remove();
+      toast(ok ? (okMsg || '已复制') : '复制失败，请改用「导出备份」存文件');
+    }catch(e){ toast('复制失败，请改用「导出备份」存文件'); }
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ toast(okMsg || '已复制'); }, fallback);
+  }else{
+    fallback();
+  }
+}
+function copyBackup(){
+  db.lastBackup = todayStr();
+  save();
+  copyText(JSON.stringify(db, null, 2), '备份已复制到剪贴板，粘贴保存即可');
+  renderBackupTip();
+}
+
+/* 备份提醒条：手机浏览器长期不用可能清理本地数据，超过 7 天未备份就提醒 */
+function renderBackupTip(){
+  var box = document.getElementById('backupTip');
+  if(!box) return;
+  if(!db.txs.length){ box.innerHTML = ''; return; }
+  var msg = '';
+  if(!db.lastBackup){
+    msg = '还没有导出过备份。手机浏览器在长期不用后可能清理本地数据，建议现在导出一次存好。';
+  }else{
+    var d = daysSince(db.lastBackup);
+    if(d >= 7) msg = '距上次备份已 '+d+' 天（上次 '+db.lastBackup+'）。建议导出一次备份，避免手机清理数据导致账本丢失。';
+  }
+  box.innerHTML = msg
+    ? '<div class="tip-banner"><span>⚠️ '+esc(msg)+'</span><button id="tipBackup">立即导出备份</button></div>'
+    : '';
+  var btn = document.getElementById('tipBackup');
+  if(btn) btn.onclick = function(){
+    exportJson();
+    toast('备份已导出，记得存到网盘或发给自己');
+  };
+}
+
+/* ===================== 示例数据 ===================== */
+function loadDemo(){
+  var d = new Date();
+  var ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  function day(n){ return ym+'-'+String(n).padStart(2,'0'); }
+  db = {
+    version: 5,
+    opening: {
+      bank: 20000, receivable: 0, debt: 0,
+      positions: [
+        { symbol:'510300', shares:1000, cost:3800 },
+        { symbol:'512880', shares:2000, cost:1600 }
+      ]
+    },
+    securityNames: { '510300':'沪深300ETF', '512880':'证券ETF' },
+    marketPrices:  { '510300': 4.40 },
+    brokerPrices:  { '510300': 3.62 },
+    txs: [
+      { id:uid(), date:day(1),  type:'income',  amount:2500, category:'生活费', note:'本月生活费' },
+      { id:uid(), date:day(3),  type:'expense', amount:120,  category:'餐饮',   note:'食堂午饭' },
+      { id:uid(), date:day(5),  type:'expense', amount:300,  category:'学习',   note:'买教材' },
+      { id:uid(), date:day(6),  type:'expense', amount:200,  category:'交通',   note:'地铁和打车' },
+      { id:uid(), date:day(8),  type:'buy',  amount:3900, shares:1000, symbol:'510300', category:'股票投资', note:'加仓沪深300ETF' },
+      { id:uid(), date:day(9),  type:'lend', amount:10000, category:'债权', note:'国债逆回购 GC007' },
+      { id:uid(), date:day(12), type:'sell', amount:2200, shares:500,  symbol:'510300', cost:1900, category:'股票投资', note:'减仓沪深300ETF' },
+      { id:uid(), date:day(14), type:'sell', amount:1400, shares:2000, symbol:'512880', cost:1600, category:'股票投资', note:'证券ETF清仓' },
+      { id:uid(), date:day(15), type:'expense', amount:680,  category:'餐饮',   note:'和同学聚餐' },
+      { id:uid(), date:day(16), type:'collect', amount:10012, category:'债权', note:'逆回购到期（利息 12）' },
+      { id:uid(), date:day(18), type:'expense', amount:88,   category:'通讯',   note:'话费充值' },
+      { id:uid(), date:day(20), type:'expense', amount:268,  category:'学习',   note:'花呗买教材', pay:'credit' },
+      { id:uid(), date:day(22), type:'refund',  amount:30,   category:'餐饮',   note:'外卖退了款', refundTo:'bank' },
+      { id:uid(), date:day(24), type:'refund',  amount:100,  category:'学习',   note:'教材退了一本', refundTo:'credit' },
+      { id:uid(), date:day(28), type:'repay',   amount:100,  category:'负债',   note:'还花呗' },
+      { id:uid(), date:day(29), type:'lend',    amount:5000, category:'债权',   note:'国债逆回购 GC001（月末未到期）' }
+    ]
+  };
+  save();
+}
+
+/* ===================== 标签切换 ===================== */
+var curTab = 'entry';
+function switchTab(tab){
+  curTab = tab;
+  [].slice.call(document.querySelectorAll('#tabs button')).forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+  });
+  document.getElementById('entryPanel').style.display = (tab === 'entry') ? '' : 'none';
+  document.getElementById('view').style.display = (tab === 'entry') ? 'none' : '';
+  if(tab === 'list') renderList();
+  else if(tab === 'report') renderReport();
+  else if(tab === 'assets') renderAssets();
+  else if(tab === 'setup') renderSetup();
+  else { renderEntryPreview(); renderBackupTip(); }
+}
+
+/* ===================== 初始化 ===================== */
+(function init(){
+  load();
+  document.getElementById('f_date').value = todayStr();
+
+  [].slice.call(document.querySelectorAll('#f_type button')).forEach(function(b){
+    b.onclick = function(){
+      [].slice.call(document.querySelectorAll('#f_type button')).forEach(function(x){ x.classList.remove('on'); });
+      this.classList.add('on');
+      fType = this.getAttribute('data-v');
+      refreshCatOptions();
+    };
+  });
+  document.getElementById('f_note').addEventListener('input', autoDetect);
+  document.getElementById('f_shares').addEventListener('input', function(){ updateSellCost(); autoDetect(); });
+  document.getElementById('f_shares').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') submitEntry();
+  });
+  document.getElementById('f_cat').addEventListener('change', function(){
+    document.getElementById('f_rule').textContent = '已手动指定为「'+this.value+'」';
+    document.getElementById('f_rule').className = 'hint';
+  });
+  document.getElementById('f_submit').onclick = submitEntry;
+  document.getElementById('f_amount').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') submitEntry();
+  });
+  document.getElementById('f_note').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') submitEntry();
+  });
+  [].slice.call(document.querySelectorAll('#tabs button')).forEach(function(b){
+    b.onclick = function(){ switchTab(this.getAttribute('data-tab')); };
+  });
+
+  if(!db.opening){
+    db.opening = { bank:0, receivable:0, positions:[], debt:0 };
+    save();
+  }
+  document.getElementById('f_symbol').addEventListener('input', function(){
+    updateSellCost(); autoDetect();
+  });
+  refreshCatOptions();
+  renderEntryPreview();
+  renderBackupTip();
+
+  /* 安卓物理返回键：系统默认会直接杀掉 App，必须接管。
+   * 规则：不在「记一笔」页 → 先回到记一笔；已在首页 → 提示后 2 秒内再按才退出。 */
+  (function hookBack(){
+    var App = Native.plugin('App');
+    if(!App || typeof App.addListener !== 'function') return;
+    var armed = null;
+    App.addListener('backButton', function(){
+      if(curTab !== 'entry'){ switchTab('entry'); return; }
+      if(armed){
+        clearTimeout(armed); armed = null;
+        if(typeof App.exitApp === 'function') App.exitApp();
+        return;
+      }
+      toast('再按一次返回键退出');
+      armed = setTimeout(function(){ armed = null; }, 2000);
+    });
+  })();
+})();
+
+/* ===================== 注册 Service Worker（仅 https / localhost 生效） ===================== */
+(function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  if(Native.isApp) return;  // App 内资源全在安装包里，注册 SW 只会导致改版后仍跑旧缓存
+  if(location.protocol !== 'http:' && location.protocol !== 'https:') return;  // file:// 下跳过，不影响使用
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){ /* 注册失败不影响记账 */ });
+  });
+})();
+</script>
+</body>
+</html>
