@@ -138,6 +138,10 @@
   .bar-pct{width:46px;text-align:right;font-size:11.5px;color:var(--t3);font-variant-numeric:tabular-nums;flex:none}
   .pct{font-variant-numeric:tabular-nums;color:var(--t2)}
   .pct.top{color:var(--blue);font-weight:600}
+  .pctcol{width:120px}
+  .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* 手机窄屏用：类型标签并进科目列，说明折成第二行，避免六列被挤成一字一行 */
+  .mob-type,.mob-note{display:none}
   .pctbar{display:inline-block;vertical-align:middle;width:46px;height:6px;margin-right:6px;
     background:var(--line2);border-radius:3px;overflow:hidden}
   .pctbar>i{display:block;height:100%;background:#85b7eb;border-radius:3px}
@@ -216,6 +220,11 @@
     .bar-val{width:74px}
     .bar-pct{width:40px;font-size:11px}
     .pctbar{display:none}
+    .pctcol{width:auto}
+    .c-type,.c-note{display:none}
+    .mob-type{display:inline-block;margin-right:5px}
+    .mob-note{display:block;color:var(--t3);font-size:11.5px;margin-top:2px}
+    .c-date,.c-act{white-space:nowrap}
     .kpi{padding:11px 12px}
     .kpi .v{font-size:18px}
     .row{gap:10px}
@@ -1452,7 +1461,7 @@ function renderList(){
   if(!rows.length){
     html += '<div class="empty">这个月还没有记录</div>';
   }else{
-    html += '<table><thead><tr><th>日期</th><th>类型</th><th>科目</th><th>说明</th><th class="num">金额</th><th></th></tr></thead><tbody>';
+    html += '<div class="tbl-scroll"><table><thead><tr><th class="c-date">日期</th><th class="c-type">类型</th><th class="c-cat">科目</th><th class="c-note">说明</th><th class="num c-amt">金额</th><th class="c-act"></th></tr></thead><tbody>';
     rows.forEach(function(t){
       var cls = (t.type==='income') ? 'up' : (t.type==='expense' || t.type==='refund' || t.type==='repay') ? 'down' : '';
       var amt;
@@ -1470,16 +1479,17 @@ function renderList(){
         if(t.type==='refund') catTxt += ' <span class="tag refund">'+(t.refundTo==='credit'?'冲抵花呗':'退回银行卡')+'</span>';
       }
       html += '<tr>' +
-        '<td class="muted">'+esc(t.date.slice(5))+'</td>' +
-        '<td>'+tagOf(t)+'</td>' +
-        '<td>'+catTxt+'</td>' +
-        '<td>'+esc(t.note||'—')+'</td>' +
-        '<td class="num '+cls+'">'+amt+'</td>' +
-        '<td class="act"><button class="edit" data-edit="'+t.id+'">编辑</button>' +
+        '<td class="muted c-date">'+esc(t.date.slice(5))+'</td>' +
+        '<td class="c-type">'+tagOf(t)+'</td>' +
+        '<td class="c-cat"><span class="mob-type">'+tagOf(t)+'</span>'+catTxt +
+          '<span class="mob-note">'+esc(t.note||'')+'</span></td>' +
+        '<td class="c-note">'+esc(t.note||'—')+'</td>' +
+        '<td class="num '+cls+' c-amt">'+amt+'</td>' +
+        '<td class="act c-act"><button class="edit" data-edit="'+t.id+'">编辑</button>' +
         '<button class="del" data-del="'+t.id+'">删除</button></td>' +
       '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     html += '<div class="hint">点「编辑」可改日期、金额、说明、科目；买券卖券的还能改标的和数量。类型不能改，记错类型请删掉重记。</div>';
   }
   html += '<div class="note-box">本月收入 '+fmt(r.incT)+' ；本月支出 '+fmt(r.expT)+
@@ -1550,7 +1560,7 @@ function renderReport(){
     });
     html += '</div>';
 
-    html += '<table style="margin-top:12px"><thead><tr><th>科目</th><th class="num" style="width:120px">占比</th><th class="num">金额</th></tr></thead><tbody>';
+    html += '<div class="tbl-scroll"><table style="margin-top:12px"><thead><tr><th>科目</th><th class="num pctcol">占比</th><th class="num">金额</th></tr></thead><tbody>';
     expKeys.forEach(function(k, i){
       var ratio = shareBase ? (Math.abs(r.exp[k])/shareBase*100) : 0;
       var barW = Math.min(100, ratio);
@@ -1562,7 +1572,7 @@ function renderReport(){
         '<td class="num down">'+fmt(r.exp[k])+'</td></tr>';
     });
     html += '<tr><td><b>合计</b></td><td class="num muted">100%</td>' +
-            '<td class="num down"><b>'+fmt(r.expT)+'</b></td></tr></tbody></table>';
+            '<td class="num down"><b>'+fmt(r.expT)+'</b></td></tr></tbody></table></div>';
 
     var top = expKeys[0];
     var topRatio = shareBase ? (Math.abs(r.exp[top])/shareBase*100) : 0;
