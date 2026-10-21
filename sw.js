@@ -1,6 +1,6 @@
 /* 记账本 Service Worker —— 让应用可离线打开、可安装到主屏
    注意：Service Worker 只在 https 或 localhost 下生效。直接双击打开本地文件（file://）时不会注册，属正常现象，不影响使用。 */
-const CACHE = 'ledger-v4';
+const CACHE = 'ledger-v5';
 const ASSETS = [
   './',
   './个人记账本.html',

@@ -134,6 +134,14 @@
   .bar-fill{height:100%;background:#85b7eb;border-radius:5px}
   .bar-fill.neg{background:#8ed3a8}
   .bar-val{width:82px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;flex:none}
+  /* 支出占比：条形图末尾的百分比 + 明细表里的占比列 */
+  .bar-pct{width:46px;text-align:right;font-size:11.5px;color:var(--t3);font-variant-numeric:tabular-nums;flex:none}
+  .pct{font-variant-numeric:tabular-nums;color:var(--t2)}
+  .pct.top{color:var(--blue);font-weight:600}
+  .pctbar{display:inline-block;vertical-align:middle;width:46px;height:6px;margin-right:6px;
+    background:var(--line2);border-radius:3px;overflow:hidden}
+  .pctbar>i{display:block;height:100%;background:#85b7eb;border-radius:3px}
+  .pctbar>i.neg{background:#8ed3a8}
   .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;background:var(--line2);color:var(--t2)}
   .tag.income{background:#fbe9ec;color:var(--up)}
   .tag.expense{background:#e6f4ec;color:var(--down)}
@@ -151,6 +159,30 @@
   .toast.show{opacity:1}
   .del{border:none;background:none;color:var(--t3);cursor:pointer;font-size:13px;font-family:inherit}
   .del:hover{color:var(--up)}
+  .edit{border:none;background:none;color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit;margin-right:8px}
+  .edit:hover{text-decoration:underline}
+  td.act{white-space:nowrap;text-align:right}
+
+  /* ---------- 流水编辑弹层 ---------- */
+  .editpop{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:14px}
+  .editpop[hidden]{display:none}
+  .editpop-bg{position:absolute;inset:0;background:rgba(20,24,30,.42)}
+  .editpop-body{
+    position:relative;width:100%;max-width:430px;max-height:90vh;display:flex;flex-direction:column;
+    background:var(--card);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.22);
+  }
+  .editpop-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+  .editpop-top span{font-size:14px;font-weight:600;color:var(--t1)}
+  .editpop-x{border:none;background:transparent;font-size:15px;color:var(--t3);cursor:pointer;padding:2px 6px}
+  .editpop-form{overflow-y:auto;padding:0 16px 4px;-webkit-overflow-scrolling:touch}
+  .editpop-form .field{margin-bottom:11px}
+  .editpop-foot{display:flex;gap:8px;padding:12px 16px 14px;border-top:1px solid var(--line2)}
+  .editpop-foot button{
+    flex:1;padding:11px;border-radius:9px;font-size:14px;font-family:inherit;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--t2);
+  }
+  .editpop-foot button.primary2{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+  .editpop .typerow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2);padding:2px 0 10px}
 
   /* ---------- 备份提醒条 ---------- */
   #backupTip:empty{display:none}
@@ -182,6 +214,8 @@
     th,td{padding:8px 6px}
     .bar-label{width:42px;font-size:11.5px}
     .bar-val{width:74px}
+    .bar-pct{width:40px;font-size:11px}
+    .pctbar{display:none}
     .kpi{padding:11px 12px}
     .kpi .v{font-size:18px}
     .row{gap:10px}
@@ -329,6 +363,22 @@
     <div class="calcpop-foot">
       <button type="button" class="ghost" data-calc-close>取消</button>
       <button type="button" class="primary2" id="calcPopOk">填入格子</button>
+    </div>
+  </div>
+</div>
+
+<!-- 流水编辑弹层 -->
+<div class="editpop" id="editPop" hidden>
+  <div class="editpop-bg" data-edit-close></div>
+  <div class="editpop-body">
+    <div class="editpop-top">
+      <span id="editPopTitle">编辑这笔</span>
+      <button type="button" class="editpop-x" data-edit-close aria-label="关闭">✕</button>
+    </div>
+    <div class="editpop-form" id="editPopForm"></div>
+    <div class="editpop-foot">
+      <button type="button" data-edit-close>取消</button>
+      <button type="button" class="primary2" id="editPopSave">保存修改</button>
     </div>
   </div>
 </div>
@@ -801,8 +851,9 @@ function consume(lots, need){
   }
   return cost;
 }
-/* 按标的（证券）分组建批次：每只股票一条独立队列，互不串号 */
-function buildLotsBySymbol(){
+/* 按标的（证券）分组建批次：每只股票一条独立队列，互不串号
+   excludeId：编辑卖出记录时把这笔自己排除掉，否则会按「已经卖过一次」重算，成本必然算错 */
+function buildLotsBySymbol(excludeId){
   var map = {};
   function bucket(sym){
     if(!map[sym]) map[sym] = { symbol:sym, lots:[], gap:0 };
@@ -815,6 +866,7 @@ function buildLotsBySymbol(){
   });
   sortedTxs().forEach(function(t){
     if(t.type !== 'buy' && t.type !== 'sell') return;
+    if(excludeId && t.id === excludeId) return;
     var b = bucket(symKey(t));
     var sh = Number(t.shares)||0;
     if(t.type === 'buy'){
@@ -827,8 +879,8 @@ function buildLotsBySymbol(){
   });
   return map;
 }
-function fifoCostForSell(symbol, shares){
-  var map = buildLotsBySymbol();
+function fifoCostForSell(symbol, shares, excludeId){
+  var map = buildLotsBySymbol(excludeId);
   var b = map[symbol || '未分类'];
   if(!b) return 0;
   var copy = b.lots.map(function(l){ return { shares:l.shares, cost:l.cost }; });
@@ -1185,6 +1237,206 @@ function tagOf(t){
   return '<span class="tag '+TYPE_TAG[t.type]+'">'+TYPE_LABEL[t.type]+'</span>';
 }
 
+/* ===================== 流水编辑 =====================
+   能改哪些格子，按类型决定：
+     · 日期 / 金额 / 说明 —— 九种类型全都能改
+     · 科目 —— 支出、收入、退款能改（支出和退款共用一张支出科目表）
+     · 支付方式 —— 只有支出有；退款去向 —— 只有退款有
+     · 标的 / 名称 / 数量 / 结转成本 —— 只有买入、卖出有
+     · 借入还债借出收回的科目是固定值，不给改
+   类型本身不给改：不同类型牵连的账务处理完全不同，
+   就地改类型比删了重记更容易把账改乱。 */
+var editId = null;
+
+function openEdit(id){
+  var t = null;
+  db.txs.forEach(function(x){ if(x.id === id) t = x; });
+  if(!t){ toast('这笔记录找不到了'); return; }
+  editId = id;
+
+  var isStock = (t.type === 'buy' || t.type === 'sell');
+  var hasCat  = (t.type === 'expense' || t.type === 'income' || t.type === 'refund');
+  var html = '';
+
+  html += '<div class="typerow"><span>类型</span>' + tagOf(t) +
+          '<span class="muted" style="margin-left:auto;font-size:11.5px">类型不可改，记错请删掉重记</span></div>';
+
+  html += '<div class="field"><label>日期</label>' +
+          '<input type="date" id="e_date" value="'+esc(t.date||'')+'"></div>';
+
+  html += '<div class="field"><label>金额（元）<span class="muted">· 格子里能写算式</span></label>' +
+          '<div class="calc-row">' +
+          '<input type="text" id="e_amount" data-calc inputmode="decimal" autocomplete="off" value="'+esc(t.amount)+'">' +
+          '<button type="button" class="calcbtn" data-calc-open="e_amount" title="打开计算器">＝</button>' +
+          '</div></div>';
+
+  html += '<div class="field"><label>说明</label>' +
+          '<input type="text" id="e_note" value="'+esc(t.note||'')+'" placeholder="如：食堂午饭 15"></div>';
+
+  if(hasCat){
+    var cats = (t.type === 'income') ? INCOME_CATS : EXPENSE_CATS;
+    if(t.category && cats.indexOf(t.category) < 0) cats = cats.concat([t.category]);  // 老数据里的自定义科目不能丢
+    html += '<div class="field"><label>科目</label><select id="e_cat">' +
+      cats.map(function(c){ return '<option'+(c === t.category ? ' selected' : '')+'>'+esc(c)+'</option>'; }).join('') +
+      '</select></div>';
+  }
+
+  if(t.type === 'expense'){
+    html += '<div class="field"><label>支付方式</label><select id="e_pay">' +
+      '<option value="bank"'+(t.pay === 'bank' ? ' selected' : '')+'>银行卡 / 微信 / 支付宝余额</option>' +
+      '<option value="credit"'+(t.pay === 'credit' ? ' selected' : '')+'>花呗 / 信用卡（先欠着）</option>' +
+      '</select></div>';
+  }
+  if(t.type === 'refund'){
+    html += '<div class="field"><label>退款去向</label><select id="e_refundTo">' +
+      '<option value="bank"'+(t.refundTo === 'bank' ? ' selected' : '')+'>退回银行卡 / 微信 / 支付宝余额</option>' +
+      '<option value="credit"'+(t.refundTo === 'credit' ? ' selected' : '')+'>冲抵花呗 / 信用卡欠款</option>' +
+      '</select></div>';
+  }
+
+  if(isStock){
+    html += '<div class="field"><label>标的代码</label>' +
+            '<input type="text" id="e_symbol" list="symbolList" value="'+esc(t.symbol||'')+'" autocomplete="off" autocapitalize="off" spellcheck="false"></div>';
+    html += '<div class="field"><label>标的名称 <span class="muted">（选填）</span></label>' +
+            '<input type="text" id="e_symName" value="'+esc((db.securityNames||{})[t.symbol]||'')+'" autocomplete="off"></div>';
+    html += '<div class="field"><label>数量（股 / 份）</label>' +
+            '<div class="calc-row">' +
+            '<input type="text" id="e_shares" data-calc inputmode="decimal" autocomplete="off" value="'+esc(t.shares)+'">' +
+            '<button type="button" class="calcbtn" data-calc-open="e_shares" title="打开计算器">＝</button>' +
+            '</div></div>';
+    if(t.type === 'sell'){
+      html += '<div class="field"><label>结转成本（元）<span class="muted">· 改数量会按 FIFO 自动重算</span></label>' +
+              '<div class="calc-row">' +
+              '<input type="text" id="e_cost" data-calc inputmode="decimal" autocomplete="off" value="'+esc(t.cost == null ? '' : t.cost)+'">' +
+              '<button type="button" class="calcbtn" data-calc-open="e_cost" title="打开计算器">＝</button>' +
+              '</div></div>';
+      html += '<div class="hint" id="e_costHint"></div>';
+    }
+  }
+
+  if(t.type === 'borrow' || t.type === 'repay' || t.type === 'lend' || t.type === 'collect'){
+    html += '<div class="hint">这笔的科目固定为「'+esc(t.category||'—')+'」，改金额就会跟着改负债 / 应收款余额。</div>';
+  }
+
+  document.getElementById('editPopTitle').textContent = '编辑 · ' + TYPE_LABEL[t.type] + ' ' + fmt(t.amount);
+  document.getElementById('editPopForm').innerHTML = html;
+  document.getElementById('editPop').hidden = false;
+
+  if(t.type === 'sell'){
+    var costTouched = false;
+    var costEl = document.getElementById('e_cost');
+    var hintEl = document.getElementById('e_costHint');
+    var refreshHint = function(){
+      var sym = String(document.getElementById('e_symbol').value||'').trim();
+      var sh = readNum('e_shares', NaN);
+      if(!sym || !(sh > 0)){ hintEl.textContent = '填上标的和数量，就能算出这笔该结转多少成本。'; return; }
+      var ref = fifoCostForSell(sym, sh, editId);
+      hintEl.textContent = '按 FIFO（不含这一笔）应结转 ' + fmt(ref) + '；' +
+        (sh > 0 ? '单位成本 ' + fmt(ref/sh) : '') + '。数量改了没动成本的话会自动跟过去。';
+      return ref;
+    };
+    var syncCost = function(){
+      if(costTouched){ refreshHint(); return; }
+      var sym = String(document.getElementById('e_symbol').value||'').trim();
+      var sh = readNum('e_shares', NaN);
+      if(sym && sh > 0){
+        var ref = fifoCostForSell(sym, sh, editId);
+        document.getElementById('e_cost').value = ref.toFixed(2);
+      }
+      refreshHint();
+    };
+    costEl.addEventListener('input', function(){ costTouched = true; refreshHint(); });
+    document.getElementById('e_shares').addEventListener('input', syncCost);
+    document.getElementById('e_shares').addEventListener('change', syncCost);
+    document.getElementById('e_symbol').addEventListener('input', syncCost);
+    document.getElementById('e_symbol').addEventListener('change', syncCost);
+    refreshHint();
+  }
+}
+
+function closeEdit(){
+  var pop = document.getElementById('editPop');
+  if(pop) pop.hidden = true;
+  editId = null;
+}
+
+function saveEdit(){
+  var t = null;
+  db.txs.forEach(function(x){ if(x.id === editId) t = x; });
+  if(!t){ closeEdit(); return; }
+
+  var form = document.getElementById('editPopForm');
+  flushCalcs(form);
+
+  var date = String(document.getElementById('e_date').value||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('日期没填对'); return; }
+
+  var amount = readNum('e_amount', NaN);
+  if(!(amount > 0)){ toast('金额要填大于 0 的数'); return; }
+
+  var note = String(document.getElementById('e_note').value||'').trim();
+  var oldMonth = monthOf(t.date);
+
+  /* 先把要改的值全读出来，全部校验通过后才写回去，
+     免得校验中途失败、账已经被改了一半 */
+  var next = { date:date, amount:amount, note:note };
+  var catEl = document.getElementById('e_cat');
+  if(catEl) next.category = catEl.value;
+
+  var payEl = document.getElementById('e_pay');
+  if(payEl) next.pay = payEl.value;
+
+  var refundEl = document.getElementById('e_refundTo');
+  if(refundEl) next.refundTo = refundEl.value;
+
+  if(t.type === 'buy' || t.type === 'sell'){
+    var sym = String(document.getElementById('e_symbol').value||'').trim();
+    if(!sym){ toast('标的代码不能空'); return; }
+    var shares = readNum('e_shares', NaN);
+    if(!(shares > 0)){ toast('数量要填大于 0 的数'); return; }
+    var nm = String(document.getElementById('e_symName').value||'').trim();
+    next.symbol = sym;
+    next.shares = shares;
+    next.category = '股票投资';
+    if(t.type === 'sell'){
+      var cost = readNum('e_cost', NaN);
+      if(isNaN(cost)) cost = fifoCostForSell(sym, shares, t.id);
+      next.cost = cost;
+    }
+    registerName(sym, nm);
+  }
+
+  Object.keys(next).forEach(function(k){ t[k] = next[k]; });
+  save();
+  closeEdit();
+
+  var newMonth = monthOf(t.date);
+  var msg = '已改好：' + TYPE_LABEL[t.type] + ' ' + fmt(t.amount);
+  if(newMonth !== oldMonth){
+    msg += '（已移到 ' + newMonth + ' 的账里）';
+    window.__listMonth = newMonth;          // 日期改到别的月，就跟着过去，别让这行凭空消失
+  }
+  toast(msg);
+  if(curTab === 'list') renderList();
+  else if(curTab === 'report') renderReport();
+  else if(curTab === 'assets') renderAssets();
+  renderEntryPreview();
+}
+
+/* 弹层关闭 / 保存：走事件委托，弹层里的按钮是后生成的，绑不上 onclick */
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if(!t || !t.closest) return;
+  if(t.id === 'editPopSave'){ saveEdit(); return; }
+  if(t.closest('[data-edit-close]')){ closeEdit(); return; }
+  var btn = t.closest('[data-edit]');
+  if(btn){ openEdit(btn.getAttribute('data-edit')); return; }
+});
+document.addEventListener('keydown', function(e){
+  var pop = document.getElementById('editPop');
+  if(e.key === 'Escape' && pop && !pop.hidden) closeEdit();
+});
+
 function renderList(){
   var months = allMonths();
   var cur = window.__listMonth || months[0];
@@ -1223,10 +1475,12 @@ function renderList(){
         '<td>'+catTxt+'</td>' +
         '<td>'+esc(t.note||'—')+'</td>' +
         '<td class="num '+cls+'">'+amt+'</td>' +
-        '<td class="num"><button class="del" data-del="'+t.id+'">删除</button></td>' +
+        '<td class="act"><button class="edit" data-edit="'+t.id+'">编辑</button>' +
+        '<button class="del" data-del="'+t.id+'">删除</button></td>' +
       '</tr>';
     });
     html += '</tbody></table>';
+    html += '<div class="hint">点「编辑」可改日期、金额、说明、科目；买券卖券的还能改标的和数量。类型不能改，记错类型请删掉重记。</div>';
   }
   html += '<div class="note-box">本月收入 '+fmt(r.incT)+' ；本月支出 '+fmt(r.expT)+
           ' ；本月结余 '+fmt(r.surplus)+'（含已实现投资收益 '+fmt(r.realized)+'）</div>';
@@ -1279,21 +1533,42 @@ function renderReport(){
             '，已从对应科目中扣除（不计入收入）。若某科目本月支出少于退款额，会显示为负数。</div>';
   }
   if(expKeys.length){
+    /* 占比的基数：各类支出取绝对值相加。
+       没有退款时它就等于费用合计；有退款冲减出负数科目时也不会算出负占比。 */
+    var shareBase = 0;
+    expKeys.forEach(function(k){ shareBase += Math.abs(r.exp[k]); });
+    var hasNeg = expKeys.some(function(k){ return r.exp[k] < 0; });
+
     html += '<div class="bars">';
     expKeys.forEach(function(k){
       var v = r.exp[k];
       var pct = Math.abs(v)/maxExp*100;
       html += '<div class="bar-row"><span class="bar-label">'+esc(k)+'</span>' +
         '<div class="bar-track"><div class="bar-fill'+(v<0?' neg':'')+'" style="width:'+pct.toFixed(1)+'%"></div></div>' +
+        '<span class="bar-pct">'+(shareBase ? (Math.abs(v)/shareBase*100).toFixed(1)+'%' : '—')+'</span>' +
         '<span class="bar-val down">'+fmt(v)+'</span></div>';
     });
     html += '</div>';
-    html += '<table style="margin-top:12px"><tbody>';
-    expKeys.forEach(function(k){
-      var ratio = r.expT ? (r.exp[k]/r.expT*100) : 0;
-      html += '<tr><td>'+esc(k)+'</td><td class="num muted">'+ratio.toFixed(1)+'%</td><td class="num down">'+fmt(r.exp[k])+'</td></tr>';
+
+    html += '<table style="margin-top:12px"><thead><tr><th>科目</th><th class="num" style="width:120px">占比</th><th class="num">金额</th></tr></thead><tbody>';
+    expKeys.forEach(function(k, i){
+      var ratio = shareBase ? (Math.abs(r.exp[k])/shareBase*100) : 0;
+      var barW = Math.min(100, ratio);
+      html += '<tr><td>'+esc(k)+'</td>' +
+        '<td class="num">' +
+          '<span class="pctbar"><i class="'+(r.exp[k]<0?'neg':'')+'" style="width:'+barW.toFixed(1)+'%"></i></span>' +
+          '<span class="pct'+(i===0?' top':'')+'">'+ratio.toFixed(1)+'%</span>' +
+        '</td>' +
+        '<td class="num down">'+fmt(r.exp[k])+'</td></tr>';
     });
-    html += '<tr><td><b>合计</b></td><td></td><td class="num down"><b>'+fmt(r.expT)+'</b></td></tr></tbody></table>';
+    html += '<tr><td><b>合计</b></td><td class="num muted">100%</td>' +
+            '<td class="num down"><b>'+fmt(r.expT)+'</b></td></tr></tbody></table>';
+
+    var top = expKeys[0];
+    var topRatio = shareBase ? (Math.abs(r.exp[top])/shareBase*100) : 0;
+    html += '<div class="hint">占比 = 该科目支出 ÷ 各类支出合计；本月支出最多的是「'+esc(top)+
+            '」，占 '+(topRatio.toFixed(1))+'%。'+
+            (hasNeg ? '（本月有退款冲减，个别科目为负，占比按绝对值算）' : '')+'</div>';
   }else{ html += '<div class="empty">本月无支出记录</div>'; }
 
   html += '<div class="note-box"><b>平账公式：</b>本月结余 = 收入 '+fmt(r.incT)+' − 费用 '+fmt(r.expT)+
